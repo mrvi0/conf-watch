@@ -20,13 +20,16 @@ class FileScanner:
         if isinstance(self.config, list):
             self.watched_files = self.config
         else:
-            self.watched_files = self.config.get('watch', [])
+            self.watched_files = self.config.get('watch', []) if self.config else []
     
     def _load_config(self) -> Dict:
         """Load configuration from YAML file."""
         try:
             with open(self.config_path, 'r') as f:
-                return yaml.safe_load(f)
+                content = f.read().strip()
+                if not content:
+                    return {'watch': []}
+                return yaml.safe_load(content) or {'watch': []}
         except FileNotFoundError:
             raise FileNotFoundError(f"Configuration file not found: {self.config_path}")
         except yaml.YAMLError as e:
@@ -49,12 +52,13 @@ class FileScanner:
         files = []
         for file_path in self.watched_files:
             expanded_path = self.expand_path(file_path)
+            exists = os.path.exists(expanded_path)
             files.append({
                 'original_path': file_path,
                 'path': expanded_path,
                 'expanded_path': expanded_path,
-                'exists': os.path.exists(expanded_path),
-                'hash': self.get_file_hash(expanded_path) if os.path.exists(expanded_path) else None
+                'exists': exists,
+                'hash': self.get_file_hash(expanded_path) if exists else None
             })
         return files
     

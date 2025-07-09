@@ -109,6 +109,18 @@ Examples:
 def handle_snapshot(args, config_file, repo_dir):
     scanner = FileScanner(config_file)
     storage = GitStorage(repo_dir)
+    
+    # Check if config is empty
+    files = scanner.get_watched_files()
+    if not files:
+        print("No files configured for monitoring.")
+        print("Please add files to ~/.confwatch/config/config.yml")
+        print("Example:")
+        print("  - ~/.bashrc")
+        print("  - ~/.zshrc")
+        print("  - ~/.env")
+        return
+    
     if args.files:
         for file_path in args.files:
             expanded_path = scanner.expand_path(file_path)
@@ -122,15 +134,16 @@ def handle_snapshot(args, config_file, repo_dir):
             else:
                 print(f"No changes detected in {file_path}")
     else:
-        files = scanner.get_watched_files()
         for file_info in files:
-            if file_info['exists']:
+            if file_info and file_info.get('exists'):
                 with open(file_info['path'], 'r') as f:
                     content = f.read()
                 if storage.save_file(file_info['original_path'], content, comment=args.comment or '', force=args.force):
                     print(f"Snapshot created for {file_info['original_path']}")
                 else:
                     print(f"No changes detected in {file_info['original_path']}")
+            elif file_info:
+                print(f"Warning: File not found: {file_info['original_path']}")
 
 def handle_diff(args, config_file, repo_dir):
     scanner = FileScanner(config_file)
@@ -227,17 +240,34 @@ def handle_web(args):
 
 def handle_list(config_file):
     """Handle list command."""
-    scanner = FileScanner(config_file)
-    files = scanner.get_watched_files()
-    
-    print("Monitored Files:")
-    print("=" * 50)
-    
-    for file_info in files:
-        status = "✓" if file_info['exists'] else "✗"
-        print(f"{status} {file_info['original_path']}")
-        if not file_info['exists']:
-            print(f"    (not found: {file_info['path']})")
+    try:
+        scanner = FileScanner(config_file)
+        files = scanner.get_watched_files()
+        
+        if not files:
+            print("No files configured for monitoring.")
+            print("Please add files to ~/.confwatch/config/config.yml")
+            print("Example:")
+            print("  - ~/.bashrc")
+            print("  - ~/.zshrc")
+            print("  - ~/.env")
+            return
+        
+        print("Monitored Files:")
+        print("=" * 50)
+        
+        for file_info in files:
+            if file_info is None:
+                print("Warning: file_info is None, skipping...")
+                continue
+            status = "✓" if file_info.get('exists') else "✗"
+            print(f"{status} {file_info.get('original_path', 'Unknown')}")
+            if not file_info.get('exists'):
+                print(f"    (not found: {file_info.get('path', 'Unknown')})")
+    except Exception as e:
+        print(f"Error in handle_list: {e}")
+        import traceback
+        traceback.print_exc()
 
 if __name__ == '__main__':
     main() 

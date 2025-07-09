@@ -160,9 +160,23 @@ function showHistory(abs_path) {
             let html = `<div style="margin-bottom: 10px;"><span style="color: #888;">[HISTORY] Git log for: ${abs_path}</span></div>`;
             html += '<form id="history-diff-form">';
             data.history.forEach((entry, idx) => {
+                // Извлекаем путь и комментарий из сообщения коммита
+                let lines = entry.message.split('\n');
+                let firstLine = lines[0];
+                let comment = lines.slice(1).join('\n').trim(); // Все строки кроме первой
+                
+                // Убираем "Snapshot: " и " at YYYY-MM-DD HH:MM:SS" из первой строки
+                let path = firstLine.replace(/^Snapshot: /, '').replace(/ at \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/, '');
+                
+                // Формируем финальное сообщение
+                let displayText = path;
+                if (comment) {
+                    displayText += ` - ${comment}`;
+                }
+                
                 html += `<div style="margin-bottom:4px;">
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
-                    <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${entry.hash.slice(0,8)} - ${entry.message.replace(/\n/g,' ')} </label>
+                    <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
                 </div>`;
             });
             html += '</form>';
