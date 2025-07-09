@@ -25,65 +25,78 @@ if [[ -d "$CONFWATCH_HOME" ]]; then
     fi
 fi
 
-# Create installation directory
-mkdir -p "$CONFWATCH_HOME"
-logging::info "Created installation directory: $CONFWATCH_HOME"
-
-# Check Python availability
-if command -v python3 &> /dev/null; then
-    PYTHON_VERSION_NUM=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
-    colors::success "Python $PYTHON_VERSION_NUM found"
-    
-    # Check if pip is available
-    if command -v pip3 &> /dev/null; then
-        colors::success "pip3 found"
-        VERSION_TO_INSTALL="$PYTHON_VERSION"
-    else
-        colors::warning "pip3 not found, falling back to bash version"
+# Выбор версии
+while true; do
+    echo "Which version do you want to install?"
+    echo "  1) Bash (no dependencies, minimal features)"
+    echo "  2) Python (full features, requires Python 3 + pip + Flask, PyYAML, etc)"
+    read -p "Enter 1 or 2 [1]: " version_choice
+    version_choice=${version_choice:-1}
+    if [[ "$version_choice" == "1" ]]; then
         VERSION_TO_INSTALL="$BASH_VERSION"
+        break
+    elif [[ "$version_choice" == "2" ]]; then
+        VERSION_TO_INSTALL="$PYTHON_VERSION"
+        break
+    else
+        echo "Please enter 1 or 2."
     fi
-else
-    colors::warning "Python3 not found, installing bash version"
-    VERSION_TO_INSTALL="$BASH_VERSION"
-fi
+done
 
-# Install selected version
 if [[ "$VERSION_TO_INSTALL" == "$PYTHON_VERSION" ]]; then
-    colors::info "Installing Python version..."
-    
-    # Install Python dependencies
-    pip3 install flask pyyaml requests cryptography
-    
-    # Copy Python files
+    colors::warning "Python version requires system dependencies: python3, pip3, Flask, PyYAML, requests, cryptography, watchdog, gitpython."
+    echo "If you are not sure, install the Bash version."
+    if ! confirm "Continue with Python version installation?"; then
+        echo "Installation cancelled."
+        exit 0
+    fi
+    # Проверка наличия python3 и pip3
+    if ! command -v python3 &> /dev/null; then
+        colors::error "Python3 not found! Aborting."
+        exit 1
+    fi
+    if ! command -v pip3 &> /dev/null; then
+        colors::error "pip3 not found! Aborting."
+        exit 1
+    fi
+    # Копирование Python файлов
+    mkdir -p "$CONFWATCH_HOME"
     cp -r python/confwatch "$CONFWATCH_HOME/"
     cp python/requirements.txt "$CONFWATCH_HOME/"
-    
-    # Create Python entry point
+    mkdir -p "$CONFWATCH_HOME/web"
+    cp -r bash/web/* "$CONFWATCH_HOME/web/"
+    # Создание исполняемого файла
     cat > "$CONFWATCH_HOME/confwatch" << 'EOF'
 #!/usr/bin/env python3
 import sys
 import os
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from confwatch.cli.main import main
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'confwatch'))
+from cli.main import main
 if __name__ == "__main__":
     main()
 EOF
-    
     chmod +x "$CONFWATCH_HOME/confwatch"
-    colors::success "Python version installed successfully!"
-    
+    # Создание web server entry point
+    cat > "$CONFWATCH_HOME/confwatch-web" << 'EOF'
+#!/usr/bin/env python3
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'confwatch'))
+from cli.web import main
+if __name__ == "__main__":
+    main()
+EOF
+    chmod +x "$CONFWATCH_HOME/confwatch-web"
+    colors::success "Python version installed!"
 else
-    colors::info "Installing Bash version..."
-    
-    # Copy bash files
+    # Bash версия
+    mkdir -p "$CONFWATCH_HOME"
     cp bash/confwatch "$CONFWATCH_HOME/"
     cp bash/confwatchd "$CONFWATCH_HOME/"
     cp -r bash/web "$CONFWATCH_HOME/"
-    
     chmod +x "$CONFWATCH_HOME/confwatch"
     chmod +x "$CONFWATCH_HOME/confwatchd"
-    
-    colors::success "Bash version installed successfully!"
+    colors::success "Bash version installed!"
 fi
 
 # Create configuration directory
@@ -145,6 +158,9 @@ if [[ ":$PATH:" != *":$CONFWATCH_HOME:"* ]]; then
 fi
 
 # Create aliases
+sed -i '/confwatch/d' "$HOME/.bashrc" 2>/dev/null
+sed -i '/confwatchd/d' "$HOME/.bashrc" 2>/dev/null
+
 echo "alias confwatch='$CONFWATCH_HOME/confwatch'" >> "$HOME/.bashrc"
 echo "alias confwatchd='$CONFWATCH_HOME/confwatchd'" >> "$HOME/.bashrc"
 
