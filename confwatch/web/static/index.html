@@ -58,5 +58,23 @@
 
     <!-- Custom scripts -->
     <script src="script.js"></script>
+
+    <div id="status" class="status-bar">[READY] ConfWatch Web Interface loaded successfully</div>
+    
+    <!-- Custom confirmation modal -->
+    <div id="confirmModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">[CONFIRM] Rollback Operation</span>
+            </div>
+            <div class="modal-body">
+                <div id="confirmMessage"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="confirmYes" class="btn btn-danger">[YES] Confirm</button>
+                <button id="confirmNo" class="btn">[NO] Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

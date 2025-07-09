@@ -275,8 +275,73 @@ function copyHash(hash) {
     });
 }
 
+function showConfirmDialog(message, onConfirm) {
+    const modal = document.getElementById('confirmModal');
+    const confirmMessage = document.getElementById('confirmMessage');
+    const confirmYes = document.getElementById('confirmYes');
+    const confirmNo = document.getElementById('confirmNo');
+    
+    confirmMessage.innerHTML = message;
+    modal.style.display = 'flex';
+    
+    // Обработчики событий
+    const handleConfirm = () => {
+        modal.style.display = 'none';
+        onConfirm();
+        // Удаляем обработчики
+        confirmYes.removeEventListener('click', handleConfirm);
+        confirmNo.removeEventListener('click', handleCancel);
+        document.removeEventListener('keydown', handleKeydown);
+    };
+    
+    const handleCancel = () => {
+        modal.style.display = 'none';
+        // Удаляем обработчики
+        confirmYes.removeEventListener('click', handleConfirm);
+        confirmNo.removeEventListener('click', handleCancel);
+        document.removeEventListener('keydown', handleKeydown);
+    };
+    
+    const handleKeydown = (e) => {
+        if (e.key === 'Enter') {
+            handleConfirm();
+        } else if (e.key === 'Escape') {
+            handleCancel();
+        }
+    };
+    
+    confirmYes.addEventListener('click', handleConfirm);
+    confirmNo.addEventListener('click', handleCancel);
+    document.addEventListener('keydown', handleKeydown);
+    
+    // Фокус на кнопку подтверждения
+    confirmYes.focus();
+}
+
 function rollbackFile(filePath, commitHash) {
-    if (confirm(`Are you sure you want to rollback ${filePath} to commit ${commitHash.slice(0,8)}?`)) {
+    const message = `
+        <div style="margin-bottom: 15px;">
+            <strong>[WARNING]</strong> You are about to rollback a file to a previous state.
+        </div>
+        <div style="margin-bottom: 10px;">
+            <strong>File:</strong> ${filePath}<br>
+            <strong>Target Commit:</strong> ${commitHash.slice(0,8)}<br>
+            <strong>Action:</strong> Restore file content from commit ${commitHash.slice(0,8)}
+        </div>
+        <div style="color: #ff6600; font-weight: bold;">
+            This action will:
+            <ul style="margin: 10px 0; padding-left: 20px;">
+                <li>Overwrite the current file content</li>
+                <li>Create a new snapshot with rollback comment</li>
+                <li>Cannot be undone automatically</li>
+            </ul>
+        </div>
+        <div style="color: #ffff00;">
+            Are you sure you want to proceed?
+        </div>
+    `;
+    
+    showConfirmDialog(message, () => {
         updateStatus(`[INFO] Rolling back ${filePath} to commit ${commitHash.slice(0,8)}...`);
         
         fetch('/api/rollback', {
@@ -304,5 +369,5 @@ function rollbackFile(filePath, commitHash) {
         .catch(error => {
             updateStatus(`[ERROR] Failed to rollback: ${error}`);
         });
-    }
+    });
 } 

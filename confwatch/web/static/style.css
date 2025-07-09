@@ -367,6 +367,84 @@ pre {
 }
 /* --- END TERMINAL DIFF2HTML OVERRIDES --- */
 
+/* Status bar */
+.status-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #1a1a1a;
+    color: #00ff00;
+    padding: 8px 15px;
+    font-family: 'Courier New', monospace;
+    font-size: 12px;
+    border-top: 1px solid #333;
+    z-index: 1000;
+}
+
+/* Modal styles */
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #1a1a1a;
+    border: 2px solid #333;
+    border-radius: 5px;
+    min-width: 400px;
+    max-width: 600px;
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.modal-header {
+    background: #2a2a2a;
+    padding: 10px 15px;
+    border-bottom: 1px solid #333;
+}
+
+.modal-title {
+    color: #ff6600;
+    font-family: 'Courier New', monospace;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.modal-body {
+    padding: 20px 15px;
+    color: #00ff00;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.modal-footer {
+    padding: 15px;
+    border-top: 1px solid #333;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.btn-danger {
+    background: #cc0000 !important;
+    color: white !important;
+    border-color: #ff0000 !important;
+}
+
+.btn-danger:hover {
+    background: #ff0000 !important;
+    border-color: #ff3333 !important;
+}
+
 /* Terminal scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
