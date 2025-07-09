@@ -143,22 +143,73 @@ function showHistory(abs_path) {
     historyContainer.style.display = "block";
     historyContainer.innerHTML = "<div class=\"loading\">[LOADING] Retrieving file history...</div>";
     openBlock = historyContainer;
-    
+
     fetch(`/api/history?file=${encodeURIComponent(abs_path)}`)
         .then(response => {
             if (!response.ok) {
-                return response.text().then(text => { throw new Error(text); });
+                return response.json().then(obj => { throw new Error(obj.error || 'Unknown error'); });
             }
-            return response.text();
+            return response.json();
         })
-        .then(history => {
-            historyContainer.innerHTML = `
-                <div style="margin-bottom: 10px;">
-                    <span style="color: #888;">[HISTORY] Git log for: ${abs_path}</span>
-                </div>
-                <pre>${history}</pre>
-            `;
-            updateStatus(`[SUCCESS] History loaded for ${abs_path}`);
+        .then(data => {
+            if (!data.history || data.history.length === 0) {
+                historyContainer.innerHTML = '<div class="loading">[INFO] No history found for this file.</div>';
+                return;
+            }
+            // Render list with radio buttons
+            let html = `<div style="margin-bottom: 10px;"><span style="color: #888;">[HISTORY] Git log for: ${abs_path}</span></div>`;
+            html += '<form id="history-diff-form">';
+            data.history.forEach((entry, idx) => {
+                html += `<div style="margin-bottom:4px;">
+                    <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
+                    <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${entry.hash.slice(0,8)} - ${entry.message.replace(/\n/g,' ')} </label>
+                </div>`;
+            });
+            html += '</form>';
+            html += '<button class="btn" id="show-diff-btn" disabled>[SHOW DIFF]</button>';
+            html += '<div id="custom-diff-result"></div>';
+            historyContainer.innerHTML = html;
+
+            // Logic for enabling button and showing diff
+            const form = document.getElementById('history-diff-form');
+            const btn = document.getElementById('show-diff-btn');
+            let selected = [];
+            form.addEventListener('change', function() {
+                selected = Array.from(form.elements['commit'])
+                    .filter(el => el.checked)
+                    .map(el => el.value);
+                btn.disabled = selected.length !== 2;
+            });
+            btn.addEventListener('click', function() {
+                if (selected.length !== 2) return;
+                btn.disabled = true;
+                updateStatus(`[INFO] Loading diff between selected snapshots...`);
+                const [from, to] = selected;
+                const diffDiv = document.getElementById('custom-diff-result');
+                diffDiv.innerHTML = '<div class="loading">[LOADING] Calculating diff...</div>';
+                fetch(`/api/diff_between?file=${encodeURIComponent(abs_path)}&from=${from}&to=${to}`)
+                    .then(resp => resp.text())
+                    .then(diff => {
+                        if (!diff.trim()) {
+                            diffDiv.innerHTML = '<div class="loading">[INFO] No differences found between selected snapshots.</div>';
+                        } else {
+                            diffDiv.innerHTML = `<div id="diff2html-custom"></div>`;
+                            const target = document.getElementById('diff2html-custom');
+                            target.innerHTML = Diff2Html.html(diff, {
+                                drawFileList: true,
+                                matching: "lines",
+                                outputFormat: "side-by-side"
+                            });
+                        }
+                        updateStatus(`[SUCCESS] Diff loaded between selected snapshots.`);
+                        btn.disabled = false;
+                    })
+                    .catch(err => {
+                        diffDiv.innerHTML = `<div class="error">[ERROR] Failed to load diff: ${err.message}</div>`;
+                        updateStatus('[ERROR] Diff loading failed');
+                        btn.disabled = false;
+                    });
+            });
         })
         .catch(error => {
             console.error("[ERROR] Failed to load history:", error);

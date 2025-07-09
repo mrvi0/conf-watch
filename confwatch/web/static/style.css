@@ -412,3 +412,48 @@ pre {
         align-items: flex-start;
     }
 } 
+
+.d2h-code-side-linenumber,
+.d2h-code-linenumber,
+.d2h-code-line-prefix {
+    position: static !important;
+    background: inherit !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    border: none !important;
+} 
+
+.terminal-checkbox {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #00ff00;
+    border-radius: 3px;
+    background: #0a0a0a;
+    outline: none;
+    cursor: pointer;
+    vertical-align: middle;
+    margin-right: 6px;
+    position: relative;
+    transition: border-color 0.2s;
+}
+.terminal-checkbox:checked {
+    background: #0a0a0a;
+    border-color: #00ff00;
+}
+.terminal-checkbox:checked::after {
+    content: '';
+    display: block;
+    position: absolute;
+    left: 4px;
+    top: 0px;
+    width: 4px;
+    height: 8px;
+    border: solid #00ff00;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+}
+.terminal-checkbox:focus {
+    box-shadow: 0 0 2px #00ff00;
+} 

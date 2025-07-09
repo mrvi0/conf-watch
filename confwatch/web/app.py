@@ -87,17 +87,14 @@ def get_diff():
 @app.route('/api/history')
 def get_history():
     try:
-        file_path = request.args.get('file')  # оригинальный путь
+        file_path = request.args.get('file')
         if not file_path:
             return jsonify({'error': 'File parameter required'}), 400
         storage = GitStorage(REPO_DIR)
         history = storage.get_file_history(file_path)
         if not history:
             return jsonify({'error': 'No history found'}), 404
-        result = []
-        for entry in history:
-            result.append(f"[{entry['date']}] {entry['hash'][:8]} - {entry['message']}")
-        return "\n".join(result), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        return jsonify({'history': history}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -124,6 +121,20 @@ def create_snapshot():
             return jsonify({'success': True, 'message': f'No changes detected in {abs_path}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/diff_between')
+def get_diff_between():
+    try:
+        file_path = request.args.get('file')
+        from_hash = request.args.get('from')
+        to_hash = request.args.get('to')
+        if not file_path or not from_hash or not to_hash:
+            return jsonify({'error': 'file, from, to parameters required'}), 400
+        storage = GitStorage(REPO_DIR)
+        diff = storage.get_file_diff(file_path, from_hash, to_hash)
+        return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 def run_web_server(host='localhost', port=5000, debug=False):
     """Run the web server."""
