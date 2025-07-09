@@ -156,6 +156,20 @@ function showHistory(abs_path) {
                 historyContainer.innerHTML = '<div class="loading">[INFO] No history found for this file.</div>';
                 return;
             }
+            
+            // Находим оригинальный путь файла из списка файлов
+            const fileList = document.getElementById("fileList");
+            const fileItems = fileList.querySelectorAll('.file-item');
+            let originalPath = abs_path; // fallback
+            
+            for (let item of fileItems) {
+                const fileInfo = item.querySelector('.file-name');
+                if (fileInfo && item.id === `block-${btoa(abs_path)}`) {
+                    originalPath = fileInfo.textContent;
+                    break;
+                }
+            }
+            
             // Render list with radio buttons
             let html = `<div style="margin-bottom: 10px;"><span style="color: #888;">[HISTORY] Git log for: ${abs_path}</span></div>`;
             html += '<form id="history-diff-form">';
@@ -179,7 +193,7 @@ function showHistory(abs_path) {
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
                     <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
                     <button class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
-                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${abs_path}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
+                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${originalPath}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
                 </div>`;
             });
             html += '</form>';

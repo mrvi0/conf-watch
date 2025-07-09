@@ -47,7 +47,16 @@ def api_rollback():
         # Проверяем, что коммит существует в истории
         commit_exists = any(entry['hash'] == commit_hash for entry in history)
         if not commit_exists:
-            return jsonify({'success': False, 'error': f'Commit {commit_hash[:8]} not found in history'})
+            # Попробуем найти по короткому хешу
+            commit_exists = any(entry['hash'].startswith(commit_hash) for entry in history)
+            if commit_exists:
+                # Найдём полный хеш
+                for entry in history:
+                    if entry['hash'].startswith(commit_hash):
+                        commit_hash = entry['hash']
+                        break
+            else:
+                return jsonify({'success': False, 'error': f'Commit {commit_hash[:8]} not found in history'})
         
         # Получаем safe_name для файла
         safe_name = storage._safe_name(file_path)
