@@ -25,14 +25,16 @@ def main():
         epilog="""
 Examples:
   confwatch snapshot ~/.bashrc
-  confwatch snapshot ~/.bashrc --comment "After installing nvm"
-  confwatch snapshot --comment "Daily backup" --force
+  confwatch snapshot ~/.bashrc -c "After installing nvm"
+  confwatch snapshot -c "Daily backup" --force
   confwatch diff ~/.bashrc
   confwatch history ~/.bashrc
   confwatch tag ~/.bashrc "after-nvm-install"
   confwatch rollback ~/.bashrc abc1234
   confwatch web
   confwatch web --port 9000
+  confwatch uninstall
+  confwatch uninstall --force
         """
     )
     
@@ -60,7 +62,7 @@ Examples:
     # Rollback command
     rollback_parser = subparsers.add_parser('rollback', help='Rollback file to previous version')
     rollback_parser.add_argument('file', help='File to rollback')
-    rollback_parser.add_argument('version', help='Version to rollback to (commit hash, tag, or version number)')
+    rollback_parser.add_argument('version', nargs='+', help='Version to rollback to (commit hash, tag, or version number)')
     
     # Web command
     web_parser = subparsers.add_parser('web', help='Start web interface')
@@ -70,6 +72,10 @@ Examples:
     
     # List command
     list_parser = subparsers.add_parser('list', help='List monitored files')
+    
+    # Uninstall command
+    uninstall_parser = subparsers.add_parser('uninstall', help='Uninstall ConfWatch')
+    uninstall_parser.add_argument('--force', '-f', action='store_true', help='Force uninstall without confirmation')
     
     args = parser.parse_args()
     
@@ -102,6 +108,8 @@ Examples:
             handle_web(args)
         elif args.command == 'list':
             handle_list(config_file)
+        elif args.command == 'uninstall':
+            handle_uninstall(args)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -195,42 +203,68 @@ def handle_tag(args, config_file, repo_dir):
 
 def handle_rollback(args, config_file, repo_dir):
     """Handle rollback command."""
+    import subprocess
     storage = GitStorage(repo_dir)
     history = storage.get_file_history(args.file)
     if not history:
         print(f"No history found for {args.file}")
         return
     
-    # Find the version to rollback to
-    target_version = args.version
-    if target_version.startswith('v'):
-        # Try to find a tag with the same name
-        tags = storage.repo.git.tag(l=True).split('\n')
-        for tag in tags:
-            if tag.strip() == target_version:
-                target_version = tag.strip()
-                break
+    # Join version arguments to handle spaces
+    target_version = ' '.join(args.version)
     
-    if not target_version:
-        print(f"Error: Version '{args.version}' not found.")
-        return
+    # Check if it's a commit hash (40 characters)
+    if len(target_version) == 40 and all(c in '0123456789abcdef' for c in target_version.lower()):
+        commit_hash = target_version
+    # Check if it's a short hash (7-8 characters)
+    elif len(target_version) in [7, 8] and all(c in '0123456789abcdef' for c in target_version.lower()):
+        # Find the full hash
+        for entry in history:
+            if entry['hash'].startswith(target_version):
+                commit_hash = entry['hash']
+                break
+        else:
+            print(f"Error: Commit hash '{target_version}' not found in history.")
+            return
+    # Check if it's a tag
+    elif target_version.startswith('v'):
+        try:
+            commit_hash = storage.repo.git.rev_parse(target_version)
+        except:
+            print(f"Error: Tag '{target_version}' not found.")
+            return
+    else:
+        # Try to find by comment
+        found_commit = None
+        for entry in history:
+            if target_version in entry['message']:
+                found_commit = entry['hash']
+                break
+        
+        if found_commit:
+            commit_hash = found_commit
+        else:
+            print(f"Error: Version '{target_version}' not found in history.")
+            print("Available versions:")
+            for entry in history:
+                print(f"  {entry['hash'][:8]} - {entry['message'].split('Snapshot:')[0].strip()}")
+            return
     
     try:
-        # Get the commit hash for the target version
-        commit_hash = storage.repo.git.rev_parse(target_version)
-        
-        # Get the current commit hash
-        current_commit = storage.repo.head.commit.hexsha
-        
-        # Create a new branch for the rollback
-        new_branch_name = f"rollback_{current_commit[:8]}_{target_version}"
-        storage.repo.git.checkout(new_branch_name)
-        
-        # Reset the current branch to the target version
-        storage.repo.git.reset(commit_hash)
-        storage.repo.git.checkout(storage.repo.head.commit.hexsha) # Ensure we are on the latest commit
-        
-        print(f"Rolled back {args.file} to version '{target_version}' (commit {commit_hash[:8]})")
+        # Получаем safe_name для файла
+        safe_name = storage._safe_name(args.file)
+        # Получаем содержимое файла из git по нужному коммиту
+        file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
+        # Перезаписываем отслеживаемый файл этим содержимым
+        scanner = FileScanner(config_file)
+        expanded_path = scanner.expand_path(args.file)
+        with open(expanded_path, 'w') as f:
+            f.write(file_content)
+        print(f"Restored {args.file} to state from commit {commit_hash[:8]}")
+        # Создаём снапшот с комментарием
+        rollback_comment = f"Rollback from commit {commit_hash[:8]}"
+        if storage.save_file(args.file, file_content, comment=rollback_comment, force=True):
+            print(f"Snapshot created for rollback: {rollback_comment}")
     except Exception as e:
         print(f"Error rolling back: {e}")
 
@@ -268,6 +302,63 @@ def handle_list(config_file):
         print(f"Error in handle_list: {e}")
         import traceback
         traceback.print_exc()
+
+def handle_uninstall(args):
+    """Handle uninstall command."""
+    confwatch_home = os.path.expanduser("~/.confwatch")
+    
+    if not os.path.exists(confwatch_home):
+        print("ConfWatch is not installed.")
+        return
+    
+    if not args.force:
+        print("This will completely remove ConfWatch and all its data.")
+        print(f"Location: {confwatch_home}")
+        response = input("Are you sure? (y/N): ")
+        if response.lower() not in ['y', 'yes']:
+            print("Uninstall cancelled.")
+            return
+    
+    try:
+        import shutil
+        
+        # Remove ConfWatch directory
+        shutil.rmtree(confwatch_home)
+        print(f"✓ Removed {confwatch_home}")
+        
+        # Remove from PATH in shell config files
+        shell_configs = [
+            os.path.expanduser("~/.bashrc"),
+            os.path.expanduser("~/.zshrc"),
+            os.path.expanduser("~/.profile")
+        ]
+        
+        for config_file in shell_configs:
+            if os.path.exists(config_file):
+                try:
+                    with open(config_file, 'r') as f:
+                        content = f.read()
+                    
+                    # Remove ConfWatch PATH lines
+                    lines = content.split('\n')
+                    filtered_lines = []
+                    for line in lines:
+                        if not line.strip().startswith('# ConfWatch') and confwatch_home not in line:
+                            filtered_lines.append(line)
+                    
+                    if len(filtered_lines) != len(lines):
+                        with open(config_file, 'w') as f:
+                            f.write('\n'.join(filtered_lines))
+                        print(f"✓ Removed from {config_file}")
+                except Exception as e:
+                    print(f"Warning: Could not update {config_file}: {e}")
+        
+        print("\nConfWatch has been uninstalled successfully!")
+        print("Please restart your terminal or run 'source ~/.bashrc' to update your PATH.")
+        
+    except Exception as e:
+        print(f"Error during uninstall: {e}")
+        print("You may need to manually remove ~/.confwatch")
 
 if __name__ == '__main__':
     main() 
