@@ -26,6 +26,52 @@ def index():
 def static_files(filename):
     return send_from_directory(WEB_DIR, filename)
 
+@app.route('/api/rollback', methods=['POST'])
+def api_rollback():
+    """API endpoint for rollback."""
+    try:
+        data = request.get_json()
+        file_path = data.get('file')
+        commit_hash = data.get('commit_hash')
+        
+        if not file_path or not commit_hash:
+            return jsonify({'success': False, 'error': 'Missing file path or commit hash'})
+        
+        # Выполняем rollback
+        storage = GitStorage(REPO_DIR)
+        history = storage.get_file_history(file_path)
+        
+        if not history:
+            return jsonify({'success': False, 'error': f'No history found for {file_path}'})
+        
+        # Проверяем, что коммит существует в истории
+        commit_exists = any(entry['hash'] == commit_hash for entry in history)
+        if not commit_exists:
+            return jsonify({'success': False, 'error': f'Commit {commit_hash[:8]} not found in history'})
+        
+        # Получаем safe_name для файла
+        safe_name = storage._safe_name(file_path)
+        # Получаем содержимое файла из git по нужному коммиту
+        file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
+        
+        # Перезаписываем отслеживаемый файл этим содержимым
+        scanner = FileScanner(CONFIG_FILE)
+        expanded_path = scanner.expand_path(file_path)
+        with open(expanded_path, 'w') as f:
+            f.write(file_content)
+        
+        # Создаём снапшот с комментарием
+        rollback_comment = f"Rollback from commit {commit_hash[:8]}"
+        storage.save_file(file_path, file_content, comment=rollback_comment, force=True)
+        
+        return jsonify({
+            'success': True, 
+            'message': f'Successfully rolled back {file_path} to commit {commit_hash[:8]}'
+        })
+        
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
 @app.route('/api/files')
 def get_files():
     """Get list of monitored files."""

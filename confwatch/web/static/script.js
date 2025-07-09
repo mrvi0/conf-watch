@@ -179,6 +179,7 @@ function showHistory(abs_path) {
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
                     <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
                     <button class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
+                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${filePath}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
                 </div>`;
             });
             html += '</form>';
@@ -258,4 +259,36 @@ function copyHash(hash) {
     }).catch(function(err) {
         updateStatus(`[ERROR] Failed to copy hash: ${err}`);
     });
+}
+
+function rollbackFile(filePath, commitHash) {
+    if (confirm(`Are you sure you want to rollback ${filePath} to commit ${commitHash.slice(0,8)}?`)) {
+        updateStatus(`[INFO] Rolling back ${filePath} to commit ${commitHash.slice(0,8)}...`);
+        
+        fetch('/api/rollback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                file: filePath,
+                commit_hash: commitHash
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateStatus(`[SUCCESS] ${data.message}`);
+                // Обновляем историю после rollback
+                setTimeout(() => {
+                    showFileHistory(filePath);
+                }, 1000);
+            } else {
+                updateStatus(`[ERROR] ${data.error}`);
+            }
+        })
+        .catch(error => {
+            updateStatus(`[ERROR] Failed to rollback: ${error}`);
+        });
+    }
 } 
