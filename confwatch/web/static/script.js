@@ -430,4 +430,37 @@ function rollbackFile(filePath, commitHash) {
             updateStatus(`[ERROR] Failed to rollback: ${error.message}`);
         });
     });
-} 
+}
+
+function logout() {
+    // Предотвращаем стандартное поведение браузера
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
+    updateStatus("[INFO] Logging out...");
+    
+    fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            updateStatus("[SUCCESS] Logged out successfully");
+            // Redirect to login page
+            window.location.href = '/login';
+        } else {
+            updateStatus("[ERROR] Logout failed");
+        }
+    })
+    .catch(error => {
+        console.error("[ERROR] Logout failed:", error);
+        updateStatus("[ERROR] Logout failed");
+        // Redirect to login page anyway
+        window.location.href = '/login';
+    });
+}

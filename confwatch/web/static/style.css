@@ -62,6 +62,29 @@ body {
     font-weight: 500;
 }
 
+.terminal-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logout-btn {
+    background: transparent;
+    color: #888;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.logout-btn:hover {
+    color: #ff5f56;
+    border-color: #ff5f56;
+    background: rgba(255, 95, 86, 0.1);
+}
+
 .terminal-content {
     flex: 1;
     padding: 20px;

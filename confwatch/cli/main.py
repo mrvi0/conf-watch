@@ -33,6 +33,8 @@ Examples:
   confwatch rollback ~/.bashrc abc1234
   confwatch web
   confwatch web --port 9000
+  confwatch reset-password
+  confwatch reset-password --force
   confwatch uninstall
   confwatch uninstall --force
         """
@@ -77,6 +79,10 @@ Examples:
     uninstall_parser = subparsers.add_parser('uninstall', help='Uninstall ConfWatch')
     uninstall_parser.add_argument('--force', '-f', action='store_true', help='Force uninstall without confirmation')
     
+    # Reset password command
+    reset_password_parser = subparsers.add_parser('reset-password', help='Reset web interface password')
+    reset_password_parser.add_argument('--force', '-f', action='store_true', help='Force reset without confirmation')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -110,6 +116,8 @@ Examples:
             handle_list(config_file)
         elif args.command == 'uninstall':
             handle_uninstall(args)
+        elif args.command == 'reset-password':
+            handle_reset_password(args, config_file)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -384,6 +392,33 @@ def handle_uninstall(args):
     except Exception as e:
         print(f"Error during uninstall: {e}")
         print("You may need to manually remove ~/.confwatch")
+
+def handle_reset_password(args, config_file):
+    """Handle reset password command."""
+    from confwatch.core.auth import AuthManager
+    
+    auth = AuthManager(config_file)
+    
+    if not args.force:
+        print("This will reset the web interface password.")
+        print("You will need to use the new password to access the web interface.")
+        response = input("Are you sure? (y/N): ")
+        if response.lower() not in ['y', 'yes']:
+            print("Password reset cancelled.")
+            return
+    
+    try:
+        # Generate new password
+        new_password = auth.generate_password()
+        auth.save_password(new_password)
+        
+        print("✓ Web interface password has been reset successfully!")
+        print(f"New Password: {new_password}")
+        print("⚠  IMPORTANT: Save this password! It won't be shown again.")
+        print("You can now use this password to access the web interface.")
+        
+    except Exception as e:
+        print(f"Error resetting password: {e}")
 
 if __name__ == '__main__':
     main() 
