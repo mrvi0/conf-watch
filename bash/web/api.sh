@@ -261,13 +261,14 @@ handle_request() {
             ;;
         "/api/snapshot")
             if [[ "$method" == "POST" ]]; then
-                # Read request body
+                # Read request body (skip headers)
                 local body=""
                 while IFS= read -r line; do
                     if [[ -z "$line" ]]; then
                         break
                     fi
                 done
+                # Read body
                 IFS= read -r body
                 handle_snapshot_api "$body"
             else
@@ -285,27 +286,20 @@ start_server() {
     logging::info "Starting ConfWatch web server on port $PORT"
     colors::success "Web interface available at: http://localhost:$PORT"
     
-    # Create named pipe for communication
-    local pipe="/tmp/confwatch_api_$$"
-    mkfifo "$pipe"
-    
     # Start netcat server
-    while true; do
+    nc -l -p "$PORT" -w 1 | while read -r line; do
         # Read HTTP request
-        local request=""
+        local request="$line"$'\n'
         while IFS= read -r line; do
             request="$request$line"$'\n'
             if [[ -z "$line" ]]; then
                 break
             fi
-        done < "$pipe"
+        done
         
-        # Handle request
-        handle_request "$request" > "$pipe"
-    done | nc -l -p "$PORT" -w 1
-    
-    # Cleanup
-    rm -f "$pipe"
+        # Handle request and send response
+        handle_request "$request"
+    done
 }
 
 # Show help
