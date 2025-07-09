@@ -32,6 +32,12 @@ function typeCommand() {
 
 document.addEventListener('DOMContentLoaded', function() {
     typeCommand();
+    // Подгружаем версию
+    fetch('/api/version').then(r => r.json()).then(data => {
+        if (data.version) {
+            document.getElementById('cw-version').textContent = data.version;
+        }
+    });
 });
 
 document.addEventListener("DOMContentLoaded", function() { 

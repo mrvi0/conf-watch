@@ -9,6 +9,9 @@ from flask import Flask, render_template, request, jsonify, send_from_directory,
 from ..core.scanner import FileScanner
 from ..core.storage import GitStorage
 from ..core.auth import AuthManager
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+import confwatch
 
 app = Flask(__name__)
 
@@ -307,6 +310,10 @@ def get_diff_between():
         return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/version')
+def api_version():
+    return jsonify({"version": confwatch.__version__})
 
 def run_web_server(host='localhost', port=5000, debug=False):
     """Run the web server."""
