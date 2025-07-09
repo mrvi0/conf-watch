@@ -198,7 +198,17 @@ function showHistory(abs_path) {
                 if (selected.length !== 2) return;
                 btn.disabled = true;
                 updateStatus(`[INFO] Loading diff between selected snapshots...`);
-                const [from, to] = selected;
+                
+                // Находим записи в истории для выбранных коммитов
+                const selectedEntries = data.history.filter(entry => selected.includes(entry.hash));
+                
+                // Сортируем по дате (старый -> новый)
+                selectedEntries.sort((a, b) => new Date(a.date) - new Date(b.date));
+                
+                // Берем хеши в правильном порядке (старый, новый)
+                const from = selectedEntries[0].hash;
+                const to = selectedEntries[1].hash;
+                
                 const diffDiv = document.getElementById('custom-diff-result');
                 diffDiv.innerHTML = '<div class="loading">[LOADING] Calculating diff...</div>';
                 fetch(`/api/diff_between?file=${encodeURIComponent(abs_path)}&from=${from}&to=${to}`)
