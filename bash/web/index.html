@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConfWatch - Configuration Monitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.30/diff2html.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/diff2html/3.4.30/diff2html.min.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+        }
+        .content {
+            padding: 20px;
+        }
+        .file-list {
+            margin-bottom: 30px;
+        }
+        .file-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            background: #fafafa;
+            transition: all 0.3s ease;
+        }
+        .file-item:hover {
+            background: #f0f0f0;
+            border-color: #667eea;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .file-status {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .file-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5a6fd8;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .diff-container {
+            margin-top: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .status-bar {
+            background: #e9ecef;
+            padding: 10px 20px;
+            border-bottom: 1px solid #dee2e6;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .refresh-btn {
+            float: right;
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .refresh-btn:hover {
+            background: #138496;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 ConfWatch</h1>
+            <p>Configuration File Monitor</p>
+        </div>
+        
+        <div class="status-bar">
+            <span id="status">Loading files...</span>
+            <button class="refresh-btn" onclick="loadFiles()">🔄 Refresh</button>
+        </div>
+        
+        <div class="content">
+            <div class="file-list" id="fileList">
+                <div class="loading">Loading monitored files...</div>
+            </div>
+            
+            <div class="diff-container" id="diffContainer" style="display: none;">
+                <div id="diffViewer"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Load files on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadFiles();
+        });
+
+        // Load monitored files
+        function loadFiles() {
+            document.getElementById('status').textContent = 'Loading files...';
+            
+            fetch('/api/files')
+                .then(response => response.json())
+                .then(data => {
+                    displayFiles(data.files);
+                    document.getElementById('status').textContent = `Loaded ${data.files.length} files`;
+                })
+                .catch(error => {
+                    console.error('Error loading files:', error);
+                    document.getElementById('fileList').innerHTML = 
+                        '<div class="error">Error loading files. Please check if ConfWatch is running.</div>';
+                    document.getElementById('status').textContent = 'Error loading files';
+                });
+        }
+
+        // Display files in the list
+        function displayFiles(files) {
+            const fileList = document.getElementById('fileList');
+            
+            if (files.length === 0) {
+                fileList.innerHTML = '<div class="loading">No files configured for monitoring.</div>';
+                return;
+            }
+            
+            fileList.innerHTML = files.map(file => `
+                <div class="file-item">
+                    <div class="file-info">
+                        <div class="file-name">${file.name}</div>
+                        <div class="file-status">
+                            ${file.exists ? '✓ File exists' : '✗ File not found'} | 
+                            ${file.has_history ? '📚 Has history' : '📝 No history'}
+                        </div>
+                    </div>
+                    <div class="file-actions">
+                        ${file.has_history ? 
+                            `<button class="btn btn-primary" onclick="showDiff('${file.name}')">View Diff</button>
+                             <button class="btn btn-secondary" onclick="showHistory('${file.name}')">History</button>` : 
+                            '<span class="btn btn-secondary" style="opacity: 0.5;">No History</span>'
+                        }
+                        <button class="btn btn-success" onclick="createSnapshot('${file.name}')">Snapshot</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Show diff for a file
+        function showDiff(filename) {
+            document.getElementById('status').textContent = `Loading diff for ${filename}...`;
+            document.getElementById('diffContainer').style.display = 'block';
+            document.getElementById('diffViewer').innerHTML = '<div class="loading">Loading diff...</div>';
+            
+            fetch(`/api/diff?file=${encodeURIComponent(filename)}`)
+                .then(response => response.text())
+                .then(diff => {
+                    if (diff.trim() === '') {
+                        document.getElementById('diffViewer').innerHTML = 
+                            '<div class="loading">No differences found.</div>';
+                    } else {
+                        Diff2Html.html(diff, {
+                            drawFileList: true,
+                            matching: 'lines',
+                            outputFormat: 'side-by-side'
+                        }, document.getElementById('diffViewer'));
+                    }
+                    document.getElementById('status').textContent = `Diff loaded for ${filename}`;
+                })
+                .catch(error => {
+                    console.error('Error loading diff:', error);
+                    document.getElementById('diffViewer').innerHTML = 
+                        '<div class="error">Error loading diff. Please try again.</div>';
+                    document.getElementById('status').textContent = 'Error loading diff';
+                });
+        }
+
+        // Show history for a file
+        function showHistory(filename) {
+            document.getElementById('status').textContent = `Loading history for ${filename}...`;
+            document.getElementById('diffContainer').style.display = 'block';
+            document.getElementById('diffViewer').innerHTML = '<div class="loading">Loading history...</div>';
+            
+            fetch(`/api/history?file=${encodeURIComponent(filename)}`)
+                .then(response => response.text())
+                .then(history => {
+                    document.getElementById('diffViewer').innerHTML = `
+                        <div style="padding: 20px;">
+                            <h3>History for ${filename}</h3>
+                            <pre style="background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto;">${history}</pre>
+                        </div>
+                    `;
+                    document.getElementById('status').textContent = `History loaded for ${filename}`;
+                })
+                .catch(error => {
+                    console.error('Error loading history:', error);
+                    document.getElementById('diffViewer').innerHTML = 
+                        '<div class="error">Error loading history. Please try again.</div>';
+                    document.getElementById('status').textContent = 'Error loading history';
+                });
+        }
+
+        // Create snapshot for a file
+        function createSnapshot(filename) {
+            document.getElementById('status').textContent = `Creating snapshot for ${filename}...`;
+            
+            fetch('/api/snapshot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ file: filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`Snapshot created successfully for ${filename}`);
+                    loadFiles(); // Refresh the file list
+                } else {
+                    alert(`Error creating snapshot: ${data.error}`);
+                }
+                document.getElementById('status').textContent = 'Ready';
+            })
+            .catch(error => {
+                console.error('Error creating snapshot:', error);
+                alert('Error creating snapshot. Please try again.');
+                document.getElementById('status').textContent = 'Error creating snapshot';
+            });
+        }
+    </script>
+</body>
+</html> 
