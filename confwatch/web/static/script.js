@@ -179,7 +179,7 @@ function showHistory(abs_path) {
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
                     <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
                     <button class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
-                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${filePath}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
+                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${abs_path}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
                 </div>`;
             });
             html += '</form>';
@@ -281,7 +281,7 @@ function rollbackFile(filePath, commitHash) {
                 updateStatus(`[SUCCESS] ${data.message}`);
                 // Обновляем историю после rollback
                 setTimeout(() => {
-                    showFileHistory(filePath);
+                    showHistory(filePath);
                 }, 1000);
             } else {
                 updateStatus(`[ERROR] ${data.error}`);
