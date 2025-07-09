@@ -196,7 +196,8 @@ confwatch decrypt ~/.env
 ```bash
 # Запустить веб-сервер
 cd ~/.confwatch/web
-./test_server.sh
+./webserver.sh
+./webserver.sh
 # Открыть в браузере: http://localhost:8080
 ```
 
@@ -230,17 +231,14 @@ conf-watch/
 │   ├── confwatchd            # Демон
 │   └── web/
 │       ├── index.html        # Веб-интерфейс
-│       ├── api.sh            # API сервер
-│       ├── simple_api.sh     # Простой API сервер
-│       ├── minimal_api.sh    # Минимальный API сервер
-│       └── test_server.sh    # Python3 HTTP сервер
+│       └── webserver.sh      # Веб-сервер
 ├── docs/
 │   ├── ru/
 │   │   └── README.md
 │   └── en/
 ├── install.sh                 # Умный установщик
 ├── uninstall.sh              # Скрипт удаления
-├── WEB_SERVER_README.md      # Руководство по веб-серверу
+
 ├── LICENSE                    # Лицензия MIT
 └── README.md
 ```

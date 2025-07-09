@@ -198,7 +198,8 @@ confwatch decrypt ~/.env
 ```bash
 # Start web server
 cd ~/.confwatch/web
-./api.sh
+./webserver.sh
+./webserver.sh
 
 # Open in browser
 open http://localhost:8080

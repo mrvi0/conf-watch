@@ -64,7 +64,8 @@ if [[ "$VERSION_TO_INSTALL" == "$PYTHON_VERSION" ]]; then
     cp -r python/confwatch "$CONFWATCH_HOME/"
     cp python/requirements.txt "$CONFWATCH_HOME/"
     mkdir -p "$CONFWATCH_HOME/web"
-    cp -r bash/web/* "$CONFWATCH_HOME/web/"
+    cp bash/web/webserver.sh "$CONFWATCH_HOME/web/"
+    cp bash/web/index.html "$CONFWATCH_HOME/web/"
     # Создание исполняемого файла
     cat > "$CONFWATCH_HOME/confwatch" << 'EOF'
 #!/usr/bin/env python3
@@ -93,7 +94,9 @@ else
     mkdir -p "$CONFWATCH_HOME"
     cp bash/confwatch "$CONFWATCH_HOME/"
     cp bash/confwatchd "$CONFWATCH_HOME/"
-    cp -r bash/web "$CONFWATCH_HOME/"
+    mkdir -p "$CONFWATCH_HOME/web"
+    cp bash/web/webserver.sh "$CONFWATCH_HOME/web/"
+    cp bash/web/index.html "$CONFWATCH_HOME/web/"
     chmod +x "$CONFWATCH_HOME/confwatch"
     chmod +x "$CONFWATCH_HOME/confwatchd"
     colors::success "Bash version installed!"
