@@ -1,0 +1,414 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    background: #0a0a0a;
+    color: #00ff00;
+    line-height: 1.4;
+    font-size: 14px;
+    font-weight: 400;
+    overflow-x: hidden;
+}
+
+.terminal {
+    width: 100vw;
+    height: 100vh;
+    background: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+}
+
+.terminal-header {
+    background: #1a1a1a;
+    border-bottom: 1px solid #333;
+    padding: 8px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 40px;
+}
+
+.terminal-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.terminal-button {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+.terminal-button.close {
+    background: #ff5f56;
+}
+
+.terminal-button.minimize {
+    background: #ffbd2e;
+}
+
+.terminal-button.maximize {
+    background: #27ca3f;
+}
+
+.terminal-title {
+    color: #888;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.terminal-content {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.command-line {
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.prompt {
+    color: #00ff00;
+    font-weight: 600;
+}
+
+.command {
+    color: #ffffff;
+    font-weight: 400;
+}
+
+.output {
+    color: #00ff00;
+}
+
+.banner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.ascii-art {
+    max-width: 100%;
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', monospace;
+    color: #00ff00;
+    background: transparent;
+    border: none;
+    text-align: center;
+    white-space: pre;
+}
+
+.version {
+    color: #888;
+    font-size: 12px;
+    margin-top: 10px;
+}
+
+.status-line {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-text {
+    color: #00ff00;
+    font-size: 13px;
+}
+
+.terminal-btn {
+    background: transparent;
+    color: #00ff00;
+    border: 1px solid #00ff00;
+    padding: 6px 12px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s ease;
+}
+
+.terminal-btn:hover {
+    background: #00ff00;
+    color: #0a0a0a;
+}
+
+.file-item {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    margin-bottom: 15px;
+    overflow: hidden;
+    transition: border-color 0.2s ease;
+}
+
+.file-item:hover {
+    border-color: #00ff00;
+}
+
+.file-item-main {
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-info {
+    flex: 1;
+}
+
+.file-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
+.file-status {
+    font-size: 12px;
+    color: #888;
+}
+
+.file-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn {
+    padding: 6px 12px;
+    border: 1px solid #00ff00;
+    background: transparent;
+    color: #00ff00;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.btn:hover {
+    background: #00ff00;
+    color: #0a0a0a;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    border-color: #555;
+    color: #555;
+}
+
+.diff-container, .history-container {
+    border-top: 1px solid #333;
+    background: #0f0f0f;
+    padding: 16px;
+}
+
+.loading, .error {
+    text-align: center;
+    padding: 30px 20px;
+    color: #888;
+}
+
+.error {
+    background: #2a1a1a;
+    color: #ff6b6b;
+    border-radius: 4px;
+    margin: 20px;
+}
+
+pre {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    background: #0a0a0a;
+    border: 1px solid #333;
+    border-radius: 4px;
+    padding: 12px;
+    overflow-x: auto;
+    color: #00ff00;
+    line-height: 1.4;
+}
+
+/* Diff2Html customization for terminal theme */
+.d2h-wrapper, .d2h-files-diff, .d2h-file-side-diff, .d2h-diff-table {
+    background: #0a0a0a !important;
+    color: #00ff00 !important;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+}
+.d2h-file-header {
+    background: #1a1a1a !important;
+    border-bottom: 1px solid #222 !important;
+    color: #00ff00 !important;
+}
+.d2h-file-name {
+    color: #00ff00 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+}
+.d2h-code-line, .d2h-code-side-line {
+    /* background: #0a0a0a !important; */
+    color: #00ff00 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    border: none !important;
+}
+.d2h-code-line del, .d2h-code-side-line del {
+    background: #1a0a0a !important;
+    color: #ff5555 !important;
+    text-decoration: none !important;
+}
+.d2h-code-line ins, .d2h-code-side-line ins {
+    background: #0a1a0a !important;
+    color: #55ff55 !important;
+    text-decoration: none !important;
+}
+.d2h-code-line-prefix, .d2h-code-side-linenumber {
+    color: #888 !important;
+    /* background: #0a0a0a !important; */
+}
+.d2h-info {
+    color: #888 !important;
+    background: #0a0a0a !important;
+    border: none !important;
+}
+.d2h-file-diff {
+    border: 1px solid #222 !important;
+    border-radius: 2px !important;
+    margin-bottom: 10px !important;
+}
+.d2h-diff-txt {
+    color: #00ff00 !important;
+    background: #0a0a0a !important;
+}
+.d2h-tag {
+    background: #222 !important;
+    color: #00ff00 !important;
+    border-radius: 2px !important;
+    font-size: 11px !important;
+    padding: 1px 4px !important;
+}
+.d2h-file-list-title, .d2h-file-list-line {
+    color: #00ff00 !important;
+    background: #0a0a0a !important;
+}
+.d2h-file-list-line.selected {
+    background: #1a1a1a !important;
+}
+.d2h-file-list-line del {
+    color: #ff5555 !important;
+}
+.d2h-file-list-line ins {
+    color: #55ff55 !important;
+}
+.d2h-code-line-ctn {
+    /* background: #0a0a0a !important; */
+}
+.d2h-code-side-linenumber {
+    background: #0a0a0a !important;
+    color: #444 !important;
+}
+.d2h-code-line-ctn del, .d2h-code-line-ctn ins {
+    border-radius: 0 !important;
+}
+.d2h-code-line del, .d2h-code-side-line del {
+    border-left: 3px solid #ff5555 !important;
+}
+.d2h-code-line ins, .d2h-code-side-line ins {
+    border-left: 3px solid #55ff55 !important;
+}
+.d2h-code-line-ctn {
+    border: none !important;
+}
+.d2h-code-line-ctn .d2h-code-line {
+    border: none !important;
+}
+.d2h-code-line del, .d2h-code-side-line del {
+    background: #1a0a0a !important;
+}
+.d2h-code-line ins, .d2h-code-side-line ins {
+    background: #0a1a0a !important;
+}
+/* --- END TERMINAL DIFF2HTML OVERRIDES --- */
+
+/* --- TERMINAL DIFF2HTML OVERRIDES --- */
+.d2h-ins, .d2h-code-line ins, .d2h-code-side-line ins {
+    background: #0a1a0a !important;
+    color: #55ff55 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    border-left: 3px solid #55ff55 !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+.d2h-del, .d2h-code-line del, .d2h-code-side-line del {
+    background: #1a0a0a !important;
+    color: #ff5555 !important;
+    font-family: 'JetBrains Mono', monospace !important;
+    border-left: 3px solid #ff5555 !important;
+    text-decoration: none !important;
+    box-shadow: none !important;
+}
+.d2h-emptyplaceholder{
+    background-color: #0a0a0a !important;
+}
+.d2h-code-side-emptyplaceholder{
+    background-color: transparent !important;
+}
+/* --- END TERMINAL DIFF2HTML OVERRIDES --- */
+
+/* Terminal scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .terminal-content {
+        padding: 10px;
+    }
+    
+    .ascii-art {
+        font-size: 7px;
+    }
+    
+    .file-item-main {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .file-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .status-line {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+} 

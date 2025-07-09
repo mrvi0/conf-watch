@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConfWatch Terminal</title>
+    <!-- JetBrains Mono font for terminal look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Diff2Html CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/diff2html/bundles/css/diff2html.min.css" />
+    <!-- Custom styles -->
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/diff2html/bundles/js/diff2html.min.js"></script>
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <span class="terminal-button close"></span>
+                <span class="terminal-button minimize"></span>
+                <span class="terminal-button maximize"></span>
+            </div>
+            <div class="terminal-title">confwatch@system:~$</div>
+        </div>
+        
+        <div class="terminal-content">
+            <div class="command-line">
+                <span class="prompt">$</span>
+                <span class="command" id="animated-command"></span>
+            </div>
+            
+            <div class="output">
+                <div class="banner">
+<pre class="ascii-art">
+██████╗ ██████╗ ███╗   ██╗███████╗██╗    ██╗ █████╗ ████████╗ ██████╗██╗  ██╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██║    ██║██╔══██╗╚══██╔══╝██╔════╝██║  ██║
+██║     ██║   ██║██╔██╗ ██║█████╗  ██║ █╗ ██║███████║   ██║   ██║     ███████║
+██║     ██║   ██║██║╚██╗██║██╔══╝  ██║███╗██║██╔══██║   ██║   ██║     ██╔══██║
+╚██████╗╚██████╔╝██║ ╚████║██║     ╚███╔███╔╝██║  ██║   ██║   ╚██████╗██║  ██║
+ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
+</pre>
+                    <div class="version">v1.0.0 - Configuration File Monitor</div>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-text" id="status">[INFO] Loading monitored files...</span>
+                    <button class="terminal-btn" onclick="loadFiles()">[REFRESH]</button>
+                </div>
+                
+                <div class="file-list" id="fileList">
+                    <div class="loading">[LOADING] Scanning filesystem...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom scripts -->
+    <script src="script.js"></script>
+</body>
+</html>
