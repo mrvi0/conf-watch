@@ -5,9 +5,13 @@ Flask web application for ConfWatch.
 import os
 import json
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, session, redirect, url_for
 from ..core.scanner import FileScanner
 from ..core.storage import GitStorage
+from ..core.auth import AuthManager
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+import confwatch
 
 app = Flask(__name__)
 
@@ -17,16 +21,79 @@ CONFIG_FILE = os.path.join(CONFWATCH_HOME, "config", "config.yml")
 REPO_DIR = os.path.join(CONFWATCH_HOME, "repo")
 WEB_DIR = os.path.join(CONFWATCH_HOME, "web")
 
+# Session configuration
+app.secret_key = os.urandom(24)
+
+# Initialize auth manager
+auth_manager = AuthManager(CONFIG_FILE)
+
+def require_auth(f):
+    """Decorator to require authentication for routes."""
+    def decorated_function(*args, **kwargs):
+        # Check if authentication is enabled
+        if not auth_manager.is_authenticated():
+            return send_from_directory(WEB_DIR, 'index.html')
+        
+        # Check if user is authenticated
+        if not session.get('authenticated'):
+            return redirect(url_for('login'))
+        
+        return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
+    return decorated_function
+
 @app.route('/')
+@require_auth
 def index():
     """Serve the main web interface."""
     return send_from_directory(WEB_DIR, 'index.html')
+
+@app.route('/login')
+def login():
+    """Serve the login page."""
+    if session.get('authenticated'):
+        return redirect(url_for('index'))
+    return send_from_directory(WEB_DIR, 'login.html')
 
 @app.route('/<path:filename>')
 def static_files(filename):
     return send_from_directory(WEB_DIR, filename)
 
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """API endpoint for login."""
+    try:
+        data = request.get_json()
+        password = data.get('password')
+        
+        if not password:
+            return jsonify({'success': False, 'error': 'Password is required'})
+        
+        if auth_manager.verify_password(password):
+            session['authenticated'] = True
+            return jsonify({'success': True})
+        else:
+            return jsonify({'success': False, 'error': 'Invalid password'})
+            
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/auth/logout', methods=['POST'])
+def api_logout():
+    """API endpoint for logout."""
+    session.pop('authenticated', None)
+    return jsonify({'success': True})
+
+@app.route('/api/auth/status')
+def api_auth_status():
+    """API endpoint to check authentication status."""
+    return jsonify({
+        'authenticated': session.get('authenticated', False),
+        'auth_enabled': auth_manager.is_authenticated()
+    })
+
 @app.route('/api/rollback', methods=['POST'])
+@require_auth
 def api_rollback():
     """API endpoint for rollback."""
     try:
@@ -97,6 +164,7 @@ def api_rollback():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/files')
+@require_auth
 def get_files():
     """Get list of monitored files."""
     try:
@@ -128,6 +196,7 @@ def get_files():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/diff')
+@require_auth
 def get_diff():
     try:
         file_path = request.args.get('file')  # оригинальный путь
@@ -173,6 +242,7 @@ def get_diff():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/history')
+@require_auth
 def get_history():
     try:
         file_path = request.args.get('file')
@@ -193,6 +263,7 @@ def get_history():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/snapshot', methods=['POST'])
+@require_auth
 def create_snapshot():
     try:
         data = request.get_json()
@@ -226,6 +297,7 @@ def create_snapshot():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/diff_between')
+@require_auth
 def get_diff_between():
     try:
         file_path = request.args.get('file')
@@ -238,6 +310,10 @@ def get_diff_between():
         return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/version')
+def api_version():
+    return jsonify({"version": confwatch.__version__})
 
 def run_web_server(host='localhost', port=5000, debug=False):
     """Run the web server."""

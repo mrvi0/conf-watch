@@ -3,7 +3,16 @@
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-ConfWatch is a Python-based tool for monitoring and versioning configuration files. It provides a powerful CLI and a terminal-style web interface for managing configuration file changes, history, and diffs.
+```
+██████╗ ██████╗ ███╗   ██╗███████╗██╗    ██╗ █████╗ ████████╗ ██████╗██╗  ██╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██║    ██║██╔══██╗╚══██╔══╝██╔════╝██║  ██║
+██║     ██║   ██║██╔██╗ ██║█████╗  ██║ █╗ ██║███████║   ██║   ██║     ███████║
+██║     ██║   ██║██║╚██╗██║██╔══╝  ██║███╗██║██╔══██║   ██║   ██║     ██╔══██║
+╚██████╗╚██████╔╝██║ ╚████║██║     ╚███╔███╔╝██║  ██║   ██║   ╚██████╗██║  ██║
+ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
+```
+
+ConfWatch is a Python-based tool for monitoring and versioning configuration files. It provides a powerful CLI and a terminal-style web interface for managing configuration file changes, history, and diffs. **Now with secure authentication - each installation gets a unique password!**
 
 ---
 
@@ -32,6 +41,7 @@ ConfWatch is a Python-based tool for monitoring and versioning configuration fil
 - **Terminal-style web interface** (for easy browsing and diff viewing)
 - **Custom checkboxes and controls** (all styled for terminal look)
 - **Animated CLI demo in web** (see usage examples live)
+- **Secure authentication** (unique password per installation)
 - **Easy install/uninstall** (user and dev modes)
 - **Isolated virtualenv** (no system Python pollution)
 
@@ -91,6 +101,7 @@ confwatch history <file>          # Show file history (with commit hashes)
 confwatch tag <file> <tag>        # Tag current version
 confwatch rollback <file> <ver>   # Rollback to specific version
 confwatch web [options]           # Start web interface
+confwatch reset-password          # Reset web interface password
 confwatch --help                  # Show all commands
 ```
 
@@ -103,6 +114,7 @@ confwatch history /etc/nginx/nginx.conf
 confwatch tag ~/.bashrc "after-nvm-install"
 confwatch rollback ~/.bashrc abc1234
 confwatch web --port 9000
+confwatch reset-password --force
 ```
 
 ---
@@ -110,11 +122,13 @@ confwatch web --port 9000
 ## Web Interface
 
 - Start with `confwatch web` (default: http://localhost:8080)
+- **Secure authentication** - each installation gets a unique password
 - Browse all monitored files, see status and history
 - Click [HISTORY] to see all snapshots for a file
 - Select any two snapshots and click [SHOW DIFF] to compare them
 - All controls (checkboxes, buttons) styled as in a terminal
 - Animated CLI demo at the top (shows usage examples)
+- Logout button in the terminal header
 
 **[SCREENSHOT PLACEHOLDER: Main web interface with file list, status, and animated CLI demo]**
 **[SCREENSHOT PLACEHOLDER: File history view with custom checkboxes and [SHOW DIFF] button]**
@@ -182,6 +196,12 @@ A: Edit `~/.confwatch/config/config.yml` and run `confwatch snapshot`.
 
 **Q: How do I use a different port for the web interface?**
 A: `confwatch web --port 9000`
+
+**Q: How do I reset the web interface password?**
+A: `confwatch reset-password` (with confirmation) or `confwatch reset-password --force`
+
+**Q: What if I forgot my web interface password?**
+A: Use `confwatch reset-password` to generate a new one.
 
 **Q: How do I develop or contribute?**
 A: See [Development](#development) below.

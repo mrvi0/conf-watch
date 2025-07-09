@@ -23,6 +23,9 @@
                 <span class="terminal-button maximize"></span>
             </div>
             <div class="terminal-title">confwatch@system:~$</div>
+            <div class="terminal-actions">
+                <button type="button" class="btn btn-danger logout-btn" onclick="logout()" title="Logout">[LOGOUT]</button>
+            </div>
         </div>
         
         <div class="terminal-content">
@@ -41,7 +44,7 @@
 ╚██████╗╚██████╔╝██║ ╚████║██║     ╚███╔███╔╝██║  ██║   ██║   ╚██████╗██║  ██║
  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 </pre>
-                    <div class="version">v2.0.1 - Configuration File Monitor</div>
+                    <div class="version">v<span id="cw-version"></span> - Configuration File Monitor</div>
                 </div>
                 
                 <div class="status-line">

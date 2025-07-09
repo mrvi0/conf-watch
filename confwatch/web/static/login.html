@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConfWatch - Login</title>
+    <!-- JetBrains Mono font for terminal look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+            background: #0a0a0a;
+            color: #00ff00;
+            line-height: 1.4;
+            font-size: 14px;
+            font-weight: 400;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .terminal {
+            width: 100%;
+            max-width: 500px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+        }
+
+        .terminal-header {
+            background: #1a1a1a;
+            border-bottom: 1px solid #333;
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 40px;
+        }
+
+        .terminal-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-button {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .terminal-button.close {
+            background: #ff5f56;
+        }
+
+        .terminal-button.minimize {
+            background: #ffbd2e;
+        }
+
+        .terminal-button.maximize {
+            background: #27ca3f;
+        }
+
+        .terminal-title {
+            color: #888;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .terminal-content {
+            padding: 20px;
+        }
+
+        .banner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        .ascii-art {
+            max-width: 100%;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', monospace;
+            color: #00ff00;
+            background: transparent;
+            border: none;
+            text-align: center;
+            white-space: pre;
+            font-size: 8px;
+        }
+
+        .version {
+            color: #888;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .login-form {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ff00;
+            font-weight: 500;
+        }
+
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: #0a0a0a;
+            border: 1px solid #333;
+            color: #00ff00;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
+        }
+
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #00ff00;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            background: #00ff00;
+            color: #0a0a0a;
+        }
+
+        .error {
+            background: #1a1a1a;
+            color: #ff5f56;
+            padding: 12px;
+            border: 1px solid #ff5f56;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .info {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 12px;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+            font-size: 12px;
+        }
+
+        .command-line {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .prompt {
+            color: #00ff00;
+            font-weight: 600;
+        }
+
+        .command {
+            color: #ffffff;
+            font-weight: 400;
+        }
+    </style>
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <div class="terminal-buttons">
+                <span class="terminal-button close"></span>
+                <span class="terminal-button minimize"></span>
+                <span class="terminal-button maximize"></span>
+            </div>
+            <div class="terminal-title">confwatch@system:~$ login</div>
+        </div>
+        
+        <div class="terminal-content">
+            <div class="command-line">
+                <span class="prompt">$</span>
+                <span class="command">confwatch web --auth</span>
+            </div>
+            
+            <div class="banner">
+<pre class="ascii-art">
+██████╗ ██████╗ ███╗   ██╗███████╗██╗    ██╗ █████╗ ████████╗ ██████╗██╗  ██╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██║    ██║██╔══██╗╚══██╔══╝██╔════╝██║  ██║
+██║     ██║   ██║██╔██╗ ██║█████╗  ██║ █╗ ██║███████║   ██║   ██║     ███████║
+██║     ██║   ██║██║╚██╗██║██╔══╝  ██║███╗██║██╔══██║   ██║   ██║     ██╔══██║
+╚██████╗╚██████╔╝██║ ╚████║██║     ╚███╔███╔╝██║  ██║   ██║   ╚██████╗██║  ██║
+ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
+</pre>
+                <div class="version">v2.0.1 - Configuration File Monitor</div>
+            </div>
+            
+            <div class="info">
+                [INFO] Authentication required. Enter the password generated during installation.
+            </div>
+            
+            <div class="error" id="error-message"></div>
+            
+            <div class="login-form">
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="password">[PASSWORD]</label>
+                        <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Enter password...">
+                    </div>
+                    
+                    <button type="submit" class="btn">[LOGIN] Authenticate</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ password: password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Redirect to main page
+                    window.location.href = '/';
+                } else {
+                    errorDiv.textContent = data.error || 'Invalid password';
+                    errorDiv.style.display = 'block';
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.style.display = 'block';
+            }
+        });
+        
+        // Focus on password field when page loads
+        document.getElementById('password').focus();
+    </script>
+</body>
+</html> 

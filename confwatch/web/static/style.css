@@ -62,6 +62,16 @@ body {
     font-weight: 500;
 }
 
+.terminal-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.logout-btn {
+    margin-left: 8px;
+}
+
 .terminal-content {
     flex: 1;
     padding: 20px;

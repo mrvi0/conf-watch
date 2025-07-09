@@ -140,6 +140,46 @@ create_config() {
     print_success "Configuration created at $CONFIG_DIR/config.yml"
 }
 
+# Generate authentication password
+generate_auth_password() {
+    print_info "Generating authentication password..."
+    
+    # Activate virtual environment to use Python modules
+    source "$VENV_DIR/bin/activate"
+    export PYTHONPATH="$CONFWATCH_HOME/confwatch-module:$PYTHONPATH"
+    
+    # Generate password using Python
+    PASSWORD=$(python3 -c "
+import sys
+import os
+
+# Add the confwatch module to Python path
+confwatch_module_path = '$CONFWATCH_HOME/confwatch-module'
+if confwatch_module_path not in sys.path:
+    sys.path.insert(0, confwatch_module_path)
+
+try:
+    from confwatch.core.auth import AuthManager
+    
+    auth = AuthManager('$CONFIG_DIR/config.yml')
+    password = auth.generate_password()
+    auth.save_password(password)
+    print(password)
+except Exception as e:
+    print(f'Error: {e}', file=sys.stderr)
+    exit(1)
+")
+    
+    if [[ -n "$PASSWORD" ]]; then
+        print_success "Authentication password generated"
+        # Store password for later display
+        WEB_PASSWORD="$PASSWORD"
+    else
+        print_error "Failed to generate authentication password"
+        exit 1
+    fi
+}
+
 # Initialize Git repository
 init_repo() {
     print_info "Initializing Git repository..."
@@ -267,9 +307,10 @@ main() {
     create_venv
     install_dependencies
     create_config
+    copy_python_module
     init_repo
     setup_web
-    copy_python_module
+    generate_auth_password
     create_launcher
     add_to_path
     cleanup
@@ -280,15 +321,23 @@ main() {
     echo -e "${YELLOW}Location:${NC} $CONFWATCH_HOME"
     echo -e "${YELLOW}Virtual Environment:${NC} $VENV_DIR"
     echo -e "${YELLOW}Configuration:${NC} $CONFIG_DIR/config.yml"
+    echo -e "${YELLOW}Authentication:${NC} Web interface is protected with a unique password"
     echo ""
     echo -e "${YELLOW}Next steps:${NC}"
     echo "1. Restart your terminal or run: source ~/.bashrc"
     echo "2. Edit configuration: $CONFIG_DIR/config.yml"
     echo "3. Create first snapshot: confwatch snapshot"
     echo "4. Start web interface: confwatch web"
+    echo "5. Use the generated password to access the web interface"
     echo ""
     echo -e "${YELLOW}To start using ConfWatch:${NC}"
     echo "confwatch --help"
+    echo ""
+    echo -e "${YELLOW}To reset web interface password:${NC}"
+    echo "confwatch reset-password"
+    echo ""
+    echo -e "${GREEN}Web Interface Password:${NC} $WEB_PASSWORD"
+    echo -e "${YELLOW}⚠  IMPORTANT: Save this password! It won't be shown again.${NC}"
 }
 
 # Run installation
