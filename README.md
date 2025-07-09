@@ -3,224 +3,195 @@
 [![Python](https://img.shields.io/badge/Python-3.7+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-ConfWatch is a Python-based tool for monitoring and versioning configuration files. It provides both command-line interface and web interface for managing configuration file changes.
+ConfWatch is a Python-based tool for monitoring and versioning configuration files. It provides a powerful CLI and a terminal-style web interface for managing configuration file changes, history, and diffs.
+
+---
+
+## Table of Contents
+- [Features](#features)
+- [Installation](#installation)
+  - [One-line install (recommended)](#one-line-install-recommended)
+  - [Development install](#development-install)
+- [Configuration](#configuration)
+- [CLI Usage](#cli-usage)
+- [Web Interface](#web-interface)
+- [Snapshots, Safe Name, and File Storage](#snapshots-safe-name-and-file-storage)
+- [Directory Structure](#directory-structure)
+- [Troubleshooting](#troubleshooting)
+- [FAQ](#faq)
+- [Development](#development)
+- [License](#license)
+
+---
 
 ## Features
+- **Monitor any config files** (dotfiles, .env, /etc/*, etc.)
+- **Automatic versioning** (Git-based, per-file, with unique safe names)
+- **History for every file** (see all changes, with date and comment)
+- **Diff between any two snapshots** (choose any two versions to compare)
+- **Terminal-style web interface** (for easy browsing and diff viewing)
+- **Custom checkboxes and controls** (all styled for terminal look)
+- **Animated CLI demo in web** (see usage examples live)
+- **Easy install/uninstall** (user and dev modes)
+- **Isolated virtualenv** (no system Python pollution)
 
-- **File Monitoring**: Monitor multiple configuration files simultaneously
-- **Version Control**: Automatic Git-based versioning of file changes
-- **Diff Viewing**: View differences between file versions
-- **Web Interface**: Modern web UI for managing files and viewing changes
-- **CLI Interface**: Command-line tools for automation
-- **Virtual Environment**: Isolated Python environment to avoid system conflicts
+---
 
-## Quick Start
+## Installation
 
-### Installation
+### One-line install (recommended for users)
 
 ```bash
-# Clone the repository
+curl -fsSL https://raw.githubusercontent.com/yourusername/conf-watch/main/install.sh | bash
+```
+
+- Installs to `~/.confwatch/`
+- Adds `confwatch` to your PATH (via .bashrc/.zshrc)
+- Creates virtualenv, config, repo, web, launcher
+- All dependencies are installed automatically
+
+### Development install (for contributors)
+
+```bash
 git clone https://github.com/yourusername/conf-watch.git
 cd conf-watch
-
-# Install ConfWatch
-./install.sh
+./install-dev.sh
 ```
+- Installs to `~/.confwatch/` (but uses local sources)
+- For development, testing, and PRs
 
-### Basic Usage
-
-```bash
-# List monitored files
-confwatch list
-
-# Create snapshot of a file
-confwatch snapshot ~/.bashrc
-
-# View differences
-confwatch diff ~/.bashrc
-
-# View file history
-confwatch history ~/.bashrc
-
-# Start web interface
-confwatch web
-```
-
-## Installation Details
-
-The installer creates:
-
-- **Virtual Environment**: `~/.confwatch/venv/` - Isolated Python environment
-- **Configuration**: `~/.confwatch/config/config.yml` - List of monitored files
-- **Repository**: `~/.confwatch/repo/` - Git repository for file versions
-- **Web Interface**: `~/.confwatch/web/` - Web UI files
-- **Launcher**: `~/.confwatch/confwatch` - Executable script
-
-### Requirements
-
-- Python 3.7 or higher
-- Git
-- pip
-
-### Dependencies
-
-All dependencies are installed in a virtual environment:
-
-- Flask - Web framework
-- PyYAML - Configuration file parsing
-- GitPython - Git operations
-- Click - CLI framework
-- Watchdog - File system monitoring
+---
 
 ## Configuration
 
 Edit `~/.confwatch/config/config.yml` to specify which files to monitor:
 
 ```yaml
-# ConfWatch Configuration
 # List of files to monitor (one per line, starting with -)
-
-# Shell configuration files
 - ~/.bashrc
 - ~/.zshrc
-- ~/.bash_profile
-
-# SSH configuration
 - ~/.ssh/config
-
-# Git configuration
-- ~/.gitconfig
-
-# Editor configuration
-- ~/.vimrc
-- ~/.config/nvim/init.vim
-
-# Application configuration
-- ~/.config/terminator/config
-- ~/.config/alacritty/alacritty.yml
-
-# Environment files
 - ~/.env
-- ~/.bash_aliases
+- /etc/nginx/nginx.conf
 ```
 
-## Commands
-
-### CLI Commands
-
-```bash
-confwatch list                    # List monitored files
-confwatch snapshot [files...]     # Create snapshots
-confwatch diff <file>             # Show differences
-confwatch history <file>          # Show file history
-confwatch web [options]           # Start web interface
-```
-
-### Web Interface Options
-
-```bash
-confwatch web                     # Start on localhost:8080
-confwatch web --port 9000         # Use custom port
-confwatch web --host 0.0.0.0      # Bind to all interfaces
-confwatch web --debug             # Enable debug mode
-```
-
-## Web Interface
-
-The web interface provides:
-
-- **File List**: View all monitored files with status
-- **Diff Viewer**: Side-by-side diff comparison
-- **History**: View file change history
-- **Snapshot Creation**: Create snapshots from the web UI
-- **Real-time Updates**: Refresh to see latest changes
-
-Access the web interface at `http://localhost:8080` after running `confwatch web`.
-
-## Architecture
-
-```
-confwatch/
-├── core/              # Core functionality
-│   ├── scanner.py     # File scanning and monitoring
-│   ├── storage.py     # Git-based file storage
-│   └── diff.py        # Diff generation and viewing
-├── web/               # Web interface
-│   └── app.py         # Flask web application
-└── cli/               # Command-line interface
-    └── main.py        # CLI entry point
-```
-
-## Development
-
-### Setup Development Environment
-
-```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run tests (if available)
-python -m pytest
-
-# Run development server
-python -m confwatch.cli.main web --debug
-```
-
-### Project Structure
-
-```
-conf-watch/
-├── confwatch/         # Main package
-├── requirements.txt   # Python dependencies
-├── install.sh        # Installation script
-├── uninstall.sh      # Uninstallation script
-└── README.md         # This file
-```
-
-## Troubleshooting
-
-### Common Issues
-
-1. **"Python not found"**: Install Python 3.7+ from python.org
-2. **"pip not found"**: Install pip: `python3 -m ensurepip --upgrade`
-3. **"Git not found"**: Install Git from git-scm.com
-4. **Permission errors**: Ensure you have write access to `~/.confwatch`
-
-### Logs
-
-Check the terminal output for error messages. The web interface also shows errors in the browser console.
-
-### Reinstallation
-
-If you encounter issues, you can reinstall:
-
-```bash
-./uninstall.sh
-./install.sh
-```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Support
-
-- **Issues**: Report bugs and feature requests on GitHub
-- **Documentation**: Check this README and inline code comments
-- **Web Interface**: Use the built-in help and status messages
+- You can use `~` and environment variables in paths.
+- After editing config, run `confwatch snapshot` to create initial versions.
 
 ---
 
-**ConfWatch** - Keep your configuration files under control! 🔍 
+## CLI Usage
+
+```bash
+confwatch list                    # List monitored files
+confwatch snapshot [files...]     # Create snapshots (all or specific files)
+confwatch diff <file>             # Show diff (latest vs previous)
+confwatch history <file>          # Show file history (with commit hashes)
+confwatch web [options]           # Start web interface
+confwatch --help                  # Show all commands
+```
+
+#### Examples
+```bash
+confwatch snapshot ~/.bashrc
+confwatch diff ~/.env
+confwatch history /etc/nginx/nginx.conf
+confwatch web --port 9000
+```
+
+---
+
+## Web Interface
+
+- Start with `confwatch web` (default: http://localhost:8080)
+- Browse all monitored files, see status and history
+- Click [HISTORY] to see all snapshots for a file
+- Select any two snapshots and click [SHOW DIFF] to compare them
+- All controls (checkboxes, buttons) styled as in a terminal
+- Animated CLI demo at the top (shows usage examples)
+
+**[SCREENSHOT PLACEHOLDER: Main web interface with file list, status, and animated CLI demo]**
+**[SCREENSHOT PLACEHOLDER: File history view with custom checkboxes and [SHOW DIFF] button]**
+**[SCREENSHOT PLACEHOLDER: Diff view between two arbitrary snapshots]**
+
+---
+
+## Snapshots, Safe Name, and File Storage
+
+- **Every file** is tracked by its absolute path, but stored in the repo as a unique "safe name":
+  - `safe_name = sha256(abs_path) + '_' + filename`
+  - This prevents conflicts for files with the same name in different folders.
+- **In the UI and CLI** you always see the original file path and short git commit hashes.
+- **In the repo** you may see long filenames — this is normal and ensures uniqueness.
+- **Snapshots** are git commits, each with a hash, date, and optional comment.
+- **Diff** can be shown between any two snapshots (not just latest vs previous).
+
+---
+
+## Directory Structure
+
+After install, you will have:
+
+```
+~/.confwatch/
+├── venv/                # Python virtual environment
+├── config/config.yml    # List of monitored files
+├── repo/                # Git repo with all file versions (safe names)
+├── web/                 # Web UI static files
+├── confwatch            # Launcher script (added to PATH)
+└── confwatch-module/    # All Python code (core, cli, web)
+```
+
+---
+
+## Troubleshooting
+
+- **confwatch: command not found**
+  - Run `source ~/.bashrc` or restart your terminal
+  - Make sure `~/.confwatch/` is in your PATH
+- **Python/pip/git not found**
+  - Install Python 3.7+, pip, and git
+- **Web interface not opening**
+  - Make sure nothing else is using port 8080 (or use `confwatch web --port 9000`)
+- **Permission errors**
+  - Ensure you have write access to `~/.confwatch`
+- **How to uninstall?**
+  - Run `./uninstall.sh` from the repo or remove `~/.confwatch` and clean up PATH in your shell config
+
+---
+
+## FAQ
+
+**Q: Why are some files in the repo named with a long hash?**
+A: This is the "safe name" — a unique identifier for each file, based on its absolute path. It prevents conflicts between files with the same name in different folders. In the UI and CLI you always see the original file path and short commit hashes.
+
+**Q: How do I compare any two snapshots?**
+A: In the web interface, open HISTORY for a file, select any two versions, and click [SHOW DIFF].
+
+**Q: How do I update ConfWatch?**
+A: Pull the latest code and run `./install.sh` again.
+
+**Q: How do I add/remove files from monitoring?**
+A: Edit `~/.confwatch/config/config.yml` and run `confwatch snapshot`.
+
+**Q: How do I use a different port for the web interface?**
+A: `confwatch web --port 9000`
+
+**Q: How do I develop or contribute?**
+A: See [Development](#development) below.
+
+---
+
+## Development
+
+- Clone the repo and run `./install-dev.sh` (see above)
+- All code is in `confwatch-module/` (core, cli, web)
+- Web UI is in `confwatch/web/static/`
+- To run tests: `python -m pytest`
+- To run web in dev mode: `python -m confwatch.cli.main web --debug`
+- PRs and issues welcome!
+
+---
+
+## License
+[MIT](LICENCE)

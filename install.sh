@@ -180,21 +180,17 @@ setup_web() {
 # Copy Python module to runtime directory
 copy_python_module() {
     print_info "Copying Python module..."
-    
-    # Remove existing module if exists
-    if [[ -d "$CONFWATCH_HOME/confwatch" ]]; then
-        rm -rf "$CONFWATCH_HOME/confwatch"
+    mkdir -p "$CONFWATCH_HOME/confwatch-module"
+    if [[ -d "$CONFWATCH_HOME/confwatch-module/confwatch" ]]; then
+        rm -rf "$CONFWATCH_HOME/confwatch-module/confwatch"
     fi
-    
-    # Copy Python module
-    cp -r "$TEMP_DIR/confwatch" "$CONFWATCH_HOME/"
-    print_success "Python module copied to $CONFWATCH_HOME/confwatch"
+    cp -r "$TEMP_DIR/confwatch" "$CONFWATCH_HOME/confwatch-module/"
+    print_success "Python module copied to $CONFWATCH_HOME/confwatch-module/confwatch"
 }
 
 # Create launcher script
 create_launcher() {
     print_info "Creating launcher script..."
-    
     cat > "$CONFWATCH_HOME/confwatch" << EOF
 #!/usr/bin/env bash
 
@@ -207,13 +203,12 @@ VENV_DIR="$VENV_DIR"
 # Activate virtual environment
 source "\$VENV_DIR/bin/activate"
 
-# Add project directory to Python path
-export PYTHONPATH="$CONFWATCH_HOME:\$PYTHONPATH"
+# Add runtime directory to Python path
+export PYTHONPATH="$CONFWATCH_HOME/confwatch-module:\$PYTHONPATH"
 
 # Run ConfWatch
 python -m confwatch.cli.main "\$@"
 EOF
-    
     chmod +x "$CONFWATCH_HOME/confwatch"
     print_success "Launcher script created"
 }
