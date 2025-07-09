@@ -1,0 +1,134 @@
+"""
+Flask web application for ConfWatch.
+"""
+
+import os
+import json
+from pathlib import Path
+from flask import Flask, render_template, request, jsonify, send_from_directory
+from ..core.scanner import FileScanner
+from ..core.storage import GitStorage
+
+app = Flask(__name__)
+
+# Configuration
+CONFWATCH_HOME = os.path.expanduser("~/.confwatch")
+CONFIG_FILE = os.path.join(CONFWATCH_HOME, "config", "config.yml")
+REPO_DIR = os.path.join(CONFWATCH_HOME, "repo")
+WEB_DIR = os.path.join(CONFWATCH_HOME, "web")
+
+@app.route('/')
+def index():
+    """Serve the main web interface."""
+    return send_from_directory(WEB_DIR, 'index.html')
+
+@app.route('/<path:filename>')
+def static_files(filename):
+    return send_from_directory(WEB_DIR, filename)
+
+@app.route('/api/files')
+def get_files():
+    """Get list of monitored files."""
+    try:
+        scanner = FileScanner(CONFIG_FILE)
+        files = scanner.get_watched_files()
+        
+        result = []
+        for file_info in files:
+            # Check if file has history
+            has_history = False
+            history_count = 0
+            abs_path = str(Path(file_info['original_path']).expanduser().resolve())
+            if file_info['exists']:
+                storage = GitStorage(REPO_DIR)
+                history = storage.get_file_history(abs_path)
+                history_count = len(history)
+                has_history = history_count > 0
+            
+            result.append({
+                'name': file_info['original_path'],
+                'abs_path': abs_path,
+                'exists': file_info['exists'],
+                'has_history': has_history,
+                'history_count': history_count
+            })
+        
+        return jsonify({'files': result})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/diff')
+def get_diff():
+    try:
+        file_path = request.args.get('file')  # оригинальный путь
+        if not file_path:
+            return jsonify({'error': 'File parameter required'}), 400
+        scanner = FileScanner(CONFIG_FILE)
+        expanded_path = scanner.expand_path(file_path)
+        if not os.path.exists(expanded_path):
+            return jsonify({'error': 'File not found'}), 404
+        # Читаем текущее содержимое файла (expanded_path)
+        with open(expanded_path, 'r') as f:
+            current_content = f.read()
+        storage = GitStorage(REPO_DIR)
+        # История по оригинальному пути
+        history = storage.get_file_history(file_path)
+        if not history:
+            return jsonify({'error': 'No history found'}), 404
+        if len(history) < 2:
+            return jsonify({'error': 'No previous version found'}), 404
+        prev_commit = history[1]['hash']
+        curr_commit = history[0]['hash']
+        diff = storage.get_file_diff(file_path, prev_commit, curr_commit)
+        return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/history')
+def get_history():
+    try:
+        file_path = request.args.get('file')  # оригинальный путь
+        if not file_path:
+            return jsonify({'error': 'File parameter required'}), 400
+        storage = GitStorage(REPO_DIR)
+        history = storage.get_file_history(file_path)
+        if not history:
+            return jsonify({'error': 'No history found'}), 404
+        result = []
+        for entry in history:
+            result.append(f"[{entry['date']}] {entry['hash'][:8]} - {entry['message']}")
+        return "\n".join(result), 200, {'Content-Type': 'text/plain; charset=utf-8'}
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/snapshot', methods=['POST'])
+def create_snapshot():
+    try:
+        data = request.get_json()
+        file_path = data.get('file')
+        comment = data.get('comment', '').strip()
+        force = bool(data.get('force', False))
+        if not file_path:
+            return jsonify({'success': False, 'error': 'File parameter required'}), 400
+        scanner = FileScanner(CONFIG_FILE)
+        expanded_path = scanner.expand_path(file_path)
+        abs_path = str(Path(file_path).expanduser().resolve())
+        if not os.path.exists(expanded_path):
+            return jsonify({'success': False, 'error': f'File not found: {file_path}'}), 400
+        with open(expanded_path, 'r') as f:
+            content = f.read()
+        storage = GitStorage(REPO_DIR)
+        if storage.save_file(abs_path, content, comment=comment, force=force):
+            return jsonify({'success': True, 'message': f'Snapshot created for {abs_path}'})
+        else:
+            return jsonify({'success': True, 'message': f'No changes detected in {abs_path}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+def run_web_server(host='localhost', port=5000, debug=False):
+    """Run the web server."""
+    print(f"Starting ConfWatch web server on http://{host}:{port}")
+    app.run(host=host, port=port, debug=debug)
+
+if __name__ == '__main__':
+    run_web_server() 

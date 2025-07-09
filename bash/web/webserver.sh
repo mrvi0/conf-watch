@@ -1,331 +1,298 @@
 #!/usr/bin/env bash
 
-# ConfWatch Web API
-# Simple HTTP server for web interface
-
-# Load bash-lib library
-source <(curl -fsSL https://raw.githubusercontent.com/mrvi0/bash-lib/main/bash-lib-standalone.sh)
-
-# Configuration
+# ConfWatch Web API - Python HTTP Server
 CONFWATCH_HOME="$HOME/.confwatch"
 CONFIG_FILE="$CONFWATCH_HOME/config/config.yml"
 REPO_DIR="$CONFWATCH_HOME/repo"
 WEB_DIR="$(dirname "$0")"
-PORT=8080
+PORT="${PORT:-8080}"
 
-# HTTP response headers
-HTTP_200="HTTP/1.1 200 OK\r\nContent-Type: %s\r\nAccess-Control-Allow-Origin: *\r\n\r\n"
-HTTP_404="HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\n\r\n"
-HTTP_500="HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/plain\r\n\r\n"
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# Send HTTP response
-send_response() {
-    local status="$1"
-    local content_type="$2"
-    local body="$3"
-    
-    printf "$status" "$content_type"
-    echo -n "$body"
+log_info() {
+    echo -e "${GREEN}[$(date '+%Y-%m-%d %H:%M:%S')] [INFO]${NC} $1"
 }
 
-# Send JSON response
-send_json() {
-    local body="$1"
-    send_response "$HTTP_200" "application/json" "$body"
+log_error() {
+    echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] [ERROR]${NC} $1"
 }
 
-# Send text response
-send_text() {
-    local body="$1"
-    send_response "$HTTP_200" "text/plain" "$body"
-}
-
-# Send error response
-send_error() {
-    local message="$1"
-    echo -e "$HTTP_500$message"
-}
-
-# Parse HTTP request
-parse_request() {
-    local request="$1"
-    local method=$(echo "$request" | head -n1 | cut -d' ' -f1)
-    local path=$(echo "$request" | head -n1 | cut -d' ' -f2)
-    local query=$(echo "$path" | cut -d'?' -f2)
-    local path=$(echo "$path" | cut -d'?' -f1)
-    
-    echo "$method|$path|$query"
-}
-
-# Get list of monitored files
-handle_files_api() {
-    logging::info "Handling /api/files request"
-    
-    # Read config file and extract watch list
-    local files=$(grep "^- " "$CONFIG_FILE" | sed 's/^- //' | sed 's/^[[:space:]]*//')
-    local json_files="["
-    local first=true
-    
-    for file in $files; do
-        if [[ "$first" == "true" ]]; then
-            first=false
-        else
-            json_files="$json_files,"
-        fi
-        
-        # Expand tilde in path
-        local expanded_file=$(eval echo "$file")
-        local exists="false"
-        local has_history="false"
-        
-        # Check if file exists
-        if [[ -f "$expanded_file" ]]; then
-            exists="true"
-        fi
-        
-        # Check if file has history
-        local basename=$(basename "$expanded_file")
-        if [[ -f "$REPO_DIR/$basename" ]]; then
-            has_history="true"
-        fi
-        
-        json_files="$json_files{\"name\":\"$file\",\"exists\":$exists,\"has_history\":$has_history}"
-    done
-    
-    json_files="$json_files]"
-    send_json "$json_files"
-}
-
-# Get diff for a file
-handle_diff_api() {
-    local query="$1"
-    local file=$(echo "$query" | sed 's/.*file=\([^&]*\).*/\1/' | sed 's/%20/ /g')
-    
-    logging::info "Handling /api/diff request for: $file"
-    
-    if [[ -z "$file" ]]; then
-        send_error "File parameter required"
-        return
-    fi
-    
-    # Expand tilde in path
-    file=$(eval echo "$file")
-    
-    # Get absolute path
-    file=$(realpath "$file")
-    local basename=$(basename "$file")
-    
-    cd "$REPO_DIR"
-    
-    # Check if file exists in repo
-    if [[ ! -f "$basename" ]]; then
-        send_text "No history found for: $file"
-        return
-    fi
-    
-    # Get last commit
-    local last_commit=$(git log --oneline -1 "$basename" 2>/dev/null | cut -d' ' -f1)
-    
-    if [[ -z "$last_commit" ]]; then
-        send_text "No previous version found for: $file"
-        return
-    fi
-    
-    # Get diff
-    local diff=$(git diff "$last_commit" "$basename" 2>/dev/null)
-    send_text "$diff"
-}
-
-# Get history for a file
-handle_history_api() {
-    local query="$1"
-    local file=$(echo "$query" | sed 's/.*file=\([^&]*\).*/\1/' | sed 's/%20/ /g')
-    
-    logging::info "Handling /api/history request for: $file"
-    
-    if [[ -z "$file" ]]; then
-        send_error "File parameter required"
-        return
-    fi
-    
-    # Expand tilde in path
-    file=$(eval echo "$file")
-    
-    # Get absolute path
-    file=$(realpath "$file")
-    local basename=$(basename "$file")
-    
-    cd "$REPO_DIR"
-    
-    # Check if file exists in repo
-    if [[ ! -f "$basename" ]]; then
-        send_text "No history found for: $file"
-        return
-    fi
-    
-    # Get history
-    local history=$(git log --oneline --follow "$basename" 2>/dev/null)
-    send_text "$history"
-}
-
-# Create snapshot for a file
-handle_snapshot_api() {
-    local body="$1"
-    local file=$(echo "$body" | sed 's/.*"file":"\([^"]*\)".*/\1/')
-    
-    logging::info "Handling /api/snapshot request for: $file"
-    
-    if [[ -z "$file" ]]; then
-        send_json '{"success":false,"error":"File parameter required"}'
-        return
-    fi
-    
-    # Expand tilde in path
-    file=$(eval echo "$file")
-    
-    # Check if file exists
-    if [[ ! -f "$file" ]]; then
-        send_json "{\"success\":false,\"error\":\"File not found: $file\"}"
-        return
-    fi
-    
-    # Get absolute path
-    file=$(realpath "$file")
-    local basename=$(basename "$file")
-    local repo_file="$REPO_DIR/$basename"
-    
-    # Copy file to repo
-    cp "$file" "$repo_file"
-    
-    # Add to git
-    cd "$REPO_DIR"
-    git add "$basename" > /dev/null 2>&1
-    
-    # Check if there are changes
-    if git diff --cached --quiet; then
-        send_json '{"success":true,"message":"No changes detected"}'
-        return
-    fi
-    
-    # Commit changes
-    local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
-    git commit -m "Web-snapshot: $file at $timestamp" > /dev/null 2>&1
-    
-    send_json "{\"success\":true,\"message\":\"Snapshot created for $file\"}"
-}
-
-# Handle static files
-handle_static_file() {
-    local path="$1"
-    local file="$WEB_DIR$path"
-    
-    if [[ -f "$file" ]]; then
-        local content_type="text/plain"
-        
-        # Determine content type
-        case "$file" in
-            *.html) content_type="text/html" ;;
-            *.css) content_type="text/css" ;;
-            *.js) content_type="application/javascript" ;;
-            *.json) content_type="application/json" ;;
-        esac
-        
-        send_response "$HTTP_200" "$content_type" "$(cat "$file")"
+# Check if Python is available
+check_python() {
+    if command -v python3 &> /dev/null; then
+        echo "python3"
+    elif command -v python &> /dev/null; then
+        echo "python"
     else
-        echo -e "$HTTP_404File not found"
+        return 1
     fi
 }
 
-# Main request handler
-handle_request() {
-    local request="$1"
-    local parsed=$(parse_request "$request")
-    local method=$(echo "$parsed" | cut -d'|' -f1)
-    local path=$(echo "$parsed" | cut -d'|' -f2)
-    local query=$(echo "$parsed" | cut -d'|' -f3)
+# Create Python HTTP server
+create_python_server() {
+    local python_cmd="$1"
+    cat > "$WEB_DIR/server.py" << 'EOF'
+#!/usr/bin/env python3
+import http.server
+import socketserver
+import json
+import os
+import sys
+import subprocess
+import urllib.parse
+from pathlib import Path
+
+# Configuration
+CONFWATCH_HOME = os.path.expanduser("~/.confwatch")
+CONFIG_FILE = os.path.join(CONFWATCH_HOME, "config/config.yml")
+REPO_DIR = os.path.join(CONFWATCH_HOME, "repo")
+WEB_DIR = os.path.dirname(os.path.abspath(__file__))
+
+class ConfWatchHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/':
+            self.path = '/index.html'
+            return super().do_GET()
+        elif self.path.startswith('/api/'):
+            self.handle_api()
+        else:
+            return super().do_GET()
     
-    logging::info "Request: $method $path"
+    def do_POST(self):
+        if self.path.startswith('/api/'):
+            self.handle_api()
+        else:
+            self.send_error(404)
     
-    case "$path" in
-        "/")
-            handle_static_file "/index.html"
-            ;;
-        "/api/files")
-            handle_files_api
-            ;;
-        "/api/diff")
-            handle_diff_api "$query"
-            ;;
-        "/api/history")
-            handle_history_api "$query"
-            ;;
-        "/api/snapshot")
-            if [[ "$method" == "POST" ]]; then
-                # Read request body (skip headers)
-                local body=""
-                while IFS= read -r line; do
-                    if [[ -z "$line" ]]; then
-                        break
-                    fi
-                done
-                # Read body
-                IFS= read -r body
-                handle_snapshot_api "$body"
-            else
-                send_error "Method not allowed"
-            fi
-            ;;
-        *)
-            handle_static_file "$path"
-            ;;
-    esac
+    def handle_api(self):
+        if self.path == '/api/files':
+            self.handle_files_api()
+        elif self.path.startswith('/api/diff'):
+            self.handle_diff_api()
+        elif self.path.startswith('/api/history'):
+            self.handle_history_api()
+        elif self.path == '/api/snapshot':
+            self.handle_snapshot_api()
+        else:
+            self.send_error(404)
+    
+    def handle_files_api(self):
+        try:
+            files = []
+            if os.path.exists(CONFIG_FILE):
+                with open(CONFIG_FILE, 'r') as f:
+                    for line in f:
+                        if line.strip().startswith('- '):
+                            file_path = line.strip()[2:].strip()
+                            expanded_path = os.path.expanduser(file_path)
+                            exists = os.path.exists(expanded_path)
+                            
+                            # Check if file has history
+                            safe_filename = expanded_path.replace('/', '_').replace('~', 'home')
+                            if safe_filename.startswith('_'):
+                                safe_filename = safe_filename[1:]
+                            has_history = os.path.exists(os.path.join(REPO_DIR, safe_filename))
+                            
+                            files.append({
+                                'name': file_path,
+                                'exists': exists,
+                                'has_history': has_history
+                            })
+            
+            self.send_json_response({'files': files})
+        except Exception as e:
+            self.send_error(500, str(e))
+    
+    def handle_diff_api(self):
+        try:
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            file_path = query.get('file', [''])[0]
+            
+            if not file_path:
+                self.send_error(400, 'File parameter required')
+                return
+            
+            expanded_path = os.path.expanduser(file_path)
+            if not os.path.exists(expanded_path):
+                self.send_error(404, 'File not found')
+                return
+            
+            safe_filename = expanded_path.replace('/', '_').replace('~', 'home')
+            if safe_filename.startswith('_'):
+                safe_filename = safe_filename[1:]
+            
+            repo_file = os.path.join(REPO_DIR, safe_filename)
+            if not os.path.exists(repo_file):
+                self.send_text_response('No history found for: ' + file_path)
+                return
+            
+            # Get diff using git
+            result = subprocess.run(
+                ['git', 'diff', 'HEAD~1', safe_filename],
+                cwd=REPO_DIR,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                self.send_text_response(result.stdout)
+            else:
+                self.send_text_response('No previous version found')
+        except Exception as e:
+            self.send_error(500, str(e))
+    
+    def handle_history_api(self):
+        try:
+            query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+            file_path = query.get('file', [''])[0]
+            
+            if not file_path:
+                self.send_error(400, 'File parameter required')
+                return
+            
+            expanded_path = os.path.expanduser(file_path)
+            safe_filename = expanded_path.replace('/', '_').replace('~', 'home')
+            if safe_filename.startswith('_'):
+                safe_filename = safe_filename[1:]
+            
+            repo_file = os.path.join(REPO_DIR, safe_filename)
+            if not os.path.exists(repo_file):
+                self.send_text_response('No history found for: ' + file_path)
+                return
+            
+            # Get history using git
+            result = subprocess.run(
+                ['git', 'log', '--oneline', '--follow', safe_filename],
+                cwd=REPO_DIR,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                self.send_text_response(result.stdout)
+            else:
+                self.send_text_response('No history found')
+        except Exception as e:
+            self.send_error(500, str(e))
+    
+    def handle_snapshot_api(self):
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body)
+            file_path = data.get('file', '')
+            
+            if not file_path:
+                self.send_json_response({'success': False, 'error': 'File parameter required'})
+                return
+            
+            expanded_path = os.path.expanduser(file_path)
+            if not os.path.exists(expanded_path):
+                self.send_json_response({'success': False, 'error': 'File not found'})
+                return
+            
+            safe_filename = expanded_path.replace('/', '_').replace('~', 'home')
+            if safe_filename.startswith('_'):
+                safe_filename = safe_filename[1:]
+            
+            repo_file = os.path.join(REPO_DIR, safe_filename)
+            
+            # Copy file to repo
+            import shutil
+            shutil.copy2(expanded_path, repo_file)
+            
+            # Add to git
+            result = subprocess.run(['git', 'add', safe_filename], cwd=REPO_DIR)
+            if result.returncode != 0:
+                self.send_json_response({'success': False, 'error': 'Failed to add to git'})
+                return
+            
+            # Check if there are changes
+            result = subprocess.run(['git', 'diff', '--cached', '--quiet'], cwd=REPO_DIR)
+            if result.returncode == 0:
+                self.send_json_response({'success': True, 'message': 'No changes detected'})
+                return
+            
+            # Commit changes
+            import datetime
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            result = subprocess.run(
+                ['git', 'commit', '-m', f'Web-snapshot: {file_path} at {timestamp}'],
+                cwd=REPO_DIR
+            )
+            
+            if result.returncode == 0:
+                self.send_json_response({'success': True, 'message': f'Snapshot created for {file_path}'})
+            else:
+                self.send_json_response({'success': False, 'error': 'Failed to commit'})
+        except Exception as e:
+            self.send_json_response({'success': False, 'error': str(e)})
+    
+    def send_json_response(self, data):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+    
+    def send_text_response(self, text):
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/plain')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(text.encode())
+
+def main():
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
+    
+    os.chdir(WEB_DIR)
+    
+    with socketserver.TCPServer(("", port), ConfWatchHandler) as httpd:
+        print(f"Server running at http://localhost:{port}")
+        print("Press Ctrl+C to stop")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nServer stopped")
+
+if __name__ == "__main__":
+    main()
+EOF
 }
 
 # Start HTTP server
 start_server() {
-    logging::info "Starting ConfWatch web server on port $PORT"
-    colors::success "Web interface available at: http://localhost:$PORT"
+    log_info "Starting ConfWatch Python web server on port $PORT"
+    echo -e "${GREEN}Web interface available at: http://localhost:$PORT${NC}"
+    echo -e "${YELLOW}Press Ctrl+C to stop the server${NC}"
     
-    # Start netcat server
-    nc -l -p "$PORT" -w 1 | while read -r line; do
-        # Read HTTP request
-        local request="$line"$'\n'
-        while IFS= read -r line; do
-            request="$request$line"$'\n'
-            if [[ -z "$line" ]]; then
-                break
-            fi
-        done
-        
-        # Handle request and send response
-        handle_request "$request"
-    done
+    # Create Python server
+    create_python_server
+    
+    # Start server
+    cd "$WEB_DIR"
+    python3 server.py "$PORT"
 }
 
 # Show help
 show_help() {
-    print_header "ConfWatch Web API"
-    
-    echo -e "${CYAN}Usage:${NC}"
+    echo -e "${GREEN}ConfWatch Python Web API${NC}"
+    echo "=================================================="
+    echo ""
+    echo -e "${YELLOW}Usage:${NC}"
     echo "  $0 [options]"
     echo ""
-    
-    echo -e "${CYAN}Options:${NC}"
+    echo -e "${YELLOW}Options:${NC}"
     echo "  -p, --port PORT     Port to listen on (default: 8080)"
     echo "  -h, --help          Show this help"
     echo ""
-    
-    echo -e "${CYAN}Examples:${NC}"
+    echo -e "${YELLOW}Examples:${NC}"
     echo "  $0"
     echo "  $0 -p 9000"
-    echo ""
-    
-    echo -e "${CYAN}API Endpoints:${NC}"
-    echo "  GET  /              Web interface"
-    echo "  GET  /api/files     List monitored files"
-    echo "  GET  /api/diff      Get file diff"
-    echo "  GET  /api/history   Get file history"
-    echo "  POST /api/snapshot  Create snapshot"
 }
 
 # Parse command line arguments
@@ -340,7 +307,7 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         *)
-            colors::error "Unknown option: $1"
+            log_error "Unknown option: $1"
             show_help
             exit 1
             ;;
@@ -349,15 +316,18 @@ done
 
 # Check if ConfWatch is installed
 if [[ ! -d "$CONFWATCH_HOME" ]]; then
-    colors::error "ConfWatch is not installed. Run ./install.sh first."
+    log_error "ConfWatch is not installed. Run ./install.sh first."
     exit 1
 fi
 
-# Check if netcat is available
-if ! command -v nc &> /dev/null; then
-    colors::error "netcat (nc) is required but not installed."
+# Check if Python is available
+PYTHON_CMD=$(check_python)
+if [[ $? -ne 0 ]]; then
+    log_error "Python 3 is required but not installed."
     exit 1
 fi
+
+log_info "Using Python: $PYTHON_CMD"
 
 # Start server
 start_server 

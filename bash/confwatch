@@ -22,8 +22,6 @@ declare -A FILE_COLORS=(
 
 # Initialize ConfWatch
 init_confwatch() {
-    logging::info "Initializing ConfWatch"
-    
     # Check if ConfWatch is installed
     if [[ ! -d "$CONFWATCH_HOME" ]]; then
         colors::error "ConfWatch is not installed. Run ./install.sh first."
@@ -65,8 +63,6 @@ create_snapshot() {
     local file="$1"
     local color=$(get_file_color "$file")
     
-    logging::info "Creating snapshot of: $file"
-    
     # Check if file exists
     if [[ ! -f "$file" ]]; then
         colors::error "File not found: $file"
@@ -88,10 +84,20 @@ create_snapshot() {
     
     # Add to git
     cd "$REPO_DIR"
-    git add "$(basename "$file")" > /dev/null 2>&1
+    git add "$safe_filename" > /dev/null 2>&1
     
-    # Check if there are changes
-    if git diff --cached --quiet; then
+    # Check if there are commits
+    if [[ -z $(git rev-parse --verify HEAD 2>/dev/null) ]]; then
+        # No commits yet, always commit all
+        git add .
+        local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+        git commit -a -m "Snapshot: $file at $timestamp" > /dev/null 2>&1
+            colors::success "Snapshot created for $file (initial commit)"
+        return 0
+    fi
+    
+    # Check if file has changes to commit
+    if [[ -z $(git status --porcelain "$safe_filename") ]]; then
         colors::info "No changes detected in $file"
         return 0
     fi
@@ -101,15 +107,12 @@ create_snapshot() {
     git commit -m "Snapshot: $file at $timestamp" > /dev/null 2>&1
     
     colors::success "Snapshot created for $file"
-    logging::info "Snapshot committed with timestamp: $timestamp"
 }
 
 # Show differences between versions
 show_diff() {
     local file="$1"
     local color=$(get_file_color "$file")
-    
-    logging::info "Showing diff for: $file"
     
     # Expand tilde in path
     file=$(eval echo "$file")
@@ -147,8 +150,6 @@ list_history() {
     local file="$1"
     local color=$(get_file_color "$file")
     
-    logging::info "Listing history for: $file"
-    
     # Expand tilde in path
     file=$(eval echo "$file")
     
@@ -181,8 +182,6 @@ rollback_file() {
     local file="$1"
     local version="$2"
     local color=$(get_file_color "$file")
-    
-    logging::info "Rolling back: $file to version: $version"
     
     # Expand tilde in path
     file=$(eval echo "$file")
@@ -233,8 +232,6 @@ tag_version() {
     local tag="$2"
     local color=$(get_file_color "$file")
     
-    logging::info "Tagging version for: $file with tag: $tag"
-    
     # Expand tilde in path
     file=$(eval echo "$file")
     
@@ -262,12 +259,10 @@ tag_version() {
     git tag "$tag" "$last_commit" > /dev/null 2>&1
     
     colors::success "Tagged version $last_commit as '$tag' for $file"
-    logging::info "Tag created: $tag -> $last_commit"
 }
 
 # List all monitored files
 list_files() {
-    logging::info "Listing monitored files"
     
     echo -e "${CYAN}Monitored Files:${NC}"
     echo "=================="
@@ -289,7 +284,6 @@ list_files() {
 
 # Create snapshot of all monitored files
 snapshot_all() {
-    logging::info "Creating snapshots of all monitored files"
     
     print_header "Creating Snapshots"
     
@@ -309,6 +303,33 @@ snapshot_all() {
     colors::success "Snapshot process completed!"
 }
 
+# Start web server
+start_web_server() {
+    local port="${1:-8080}"
+    
+    # Check if web directory exists
+    local web_dir="$CONFWATCH_HOME/web"
+    if [[ ! -d "$web_dir" ]]; then
+        colors::error "Web directory not found. Please reinstall ConfWatch."
+        exit 1
+    fi
+    
+    # Check if webserver script exists
+    if [[ ! -f "$web_dir/webserver.sh" ]]; then
+        colors::error "Web server script not found. Please reinstall ConfWatch."
+        exit 1
+    fi
+    
+    colors::success "Starting ConfWatch web server on port $port"
+    colors::info "Web interface available at: http://localhost:$port"
+    colors::info "Press Ctrl+C to stop the server"
+    echo ""
+    
+    # Change to web directory and start server
+    cd "$web_dir"
+    PORT="$port" ./webserver.sh
+}
+
 # Show help
 show_help() {
     print_header "ConfWatch Help"
@@ -324,6 +345,7 @@ show_help() {
     echo "  rollback <file> <version>  Rollback file to version"
     echo "  tag <file> <tag>    Tag current version"
     echo "  list                List monitored files"
+    echo "  web [port]          Start web interface (default: 8080)"
     echo "  help                Show this help"
     echo ""
     
@@ -388,6 +410,9 @@ main() {
             ;;
         "list")
             list_files
+            ;;
+        "web")
+            start_web_server "$file"
             ;;
         "help"|"--help"|"-h")
             show_help

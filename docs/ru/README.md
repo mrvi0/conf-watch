@@ -195,9 +195,7 @@ confwatch decrypt ~/.env
 **Bash версия:**
 ```bash
 # Запустить веб-сервер
-cd ~/.confwatch/web
-./webserver.sh
-./webserver.sh
+confwatch web
 # Открыть в браузере: http://localhost:8080
 ```
 

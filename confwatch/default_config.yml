@@ -1,0 +1,41 @@
+# ConfWatch Configuration
+# List of files to monitor (one per line, starting with -)
+# 
+# IMPORTANT: Uncomment the files you want to monitor and add your own files.
+# Comment out or remove files you don't need.
+# 
+# Example:
+# - ~/.bashrc                    # Uncomment to monitor bashrc
+# - ~/my-project/.env           # Add your own files like this
+
+# Shell configuration files
+# - ~/.bashrc
+# - ~/.zshrc
+# - ~/.bash_profile
+# - ~/.profile
+
+# SSH configuration
+# - ~/.ssh/config
+# - ~/.ssh/known_hosts
+
+# Git configuration
+# - ~/.gitconfig
+# - ~/.gitignore
+
+# Editor configuration
+# - ~/.vimrc
+# - ~/.config/nvim/init.vim
+# - ~/.config/code/settings.json
+
+# Application configuration
+# - ~/.config/terminator/config
+# - ~/.config/alacritty/alacritty.yml
+
+# Environment files
+# - ~/.env
+# - ~/.bash_aliases
+# - ~/.bash_functions
+
+# System configuration
+# - /etc/hosts
+# - /etc/fstab 
