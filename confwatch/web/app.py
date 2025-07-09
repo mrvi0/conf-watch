@@ -4,9 +4,11 @@ Flask web application for ConfWatch.
 
 import os
 import json
+import yaml
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify, send_from_directory
-from ..core.scanner import FileScanner
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, send_from_directory, Response
+from ..core.scanner import FileScanner, update_config_with_password
 from ..core.storage import GitStorage
 
 app = Flask(__name__)
@@ -17,16 +19,64 @@ CONFIG_FILE = os.path.join(CONFWATCH_HOME, "config", "config.yml")
 REPO_DIR = os.path.join(CONFWATCH_HOME, "repo")
 WEB_DIR = os.path.join(CONFWATCH_HOME, "web")
 
+def load_auth_config():
+    """Load authentication configuration."""
+    try:
+        with open(CONFIG_FILE, 'r') as f:
+            config = yaml.safe_load(f)
+        return config.get('web_auth', {})
+    except Exception as e:
+        print(f"Error loading auth config: {e}")
+        return {'enabled': False}
+
+def check_auth(username, password):
+    """Check if username and password are correct."""
+    auth_config = load_auth_config()
+    if not auth_config.get('enabled', False):
+        return True
+    
+    return (username == auth_config.get('username', 'admin') and 
+            password == auth_config.get('password', ''))
+
+def authenticate():
+    """Send 401 response that enables basic auth."""
+    return Response(
+        'Could not verify your access level for that URL.\n'
+        'You have to login with proper credentials', 401,
+        {'WWW-Authenticate': 'Basic realm="ConfWatch Web Interface"'})
+
+@app.errorhandler(401)
+def unauthorized(error):
+    """Handle 401 errors with styled auth page."""
+    return send_from_directory(WEB_DIR, 'auth.html'), 401
+
+def requires_auth(f):
+    """Decorator to require basic auth."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth_config = load_auth_config()
+        if not auth_config.get('enabled', False):
+            return f(*args, **kwargs)
+        
+        auth = request.authorization
+        if not auth or not check_auth(auth.username, auth.password):
+            return authenticate()
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/')
+@requires_auth
 def index():
     """Serve the main web interface."""
     return send_from_directory(WEB_DIR, 'index.html')
 
 @app.route('/<path:filename>')
+@requires_auth
 def static_files(filename):
     return send_from_directory(WEB_DIR, filename)
 
 @app.route('/api/rollback', methods=['POST'])
+@requires_auth
 def api_rollback():
     """API endpoint for rollback."""
     try:
@@ -82,6 +132,7 @@ def api_rollback():
         return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/api/files')
+@requires_auth
 def get_files():
     """Get list of monitored files."""
     try:
@@ -113,6 +164,7 @@ def get_files():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/diff')
+@requires_auth
 def get_diff():
     try:
         file_path = request.args.get('file')  # оригинальный путь
@@ -140,6 +192,7 @@ def get_diff():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/history')
+@requires_auth
 def get_history():
     try:
         file_path = request.args.get('file')
@@ -154,6 +207,7 @@ def get_history():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/snapshot', methods=['POST'])
+@requires_auth
 def create_snapshot():
     try:
         data = request.get_json()
@@ -178,6 +232,7 @@ def create_snapshot():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/diff_between')
+@requires_auth
 def get_diff_between():
     try:
         file_path = request.args.get('file')

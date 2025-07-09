@@ -106,8 +106,26 @@ create_config() {
     
     # Copy default config from project
     PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    cp "$PROJECT_DIR/confwatch/default_config.yml" "$CONFIG_DIR/config.yml"
-    print_success "Configuration created at $CONFIG_DIR/config.yml"
+    if [ -f "$CONFWATCH_HOME/config/config.yml" ]; then
+        echo "ℹ Configuration already exists"
+    else
+        cp "$PROJECT_DIR/confwatch/default_config.yml" "$CONFWATCH_HOME/config/config.yml"
+        echo "✓ Configuration created at $CONFWATCH_HOME/config/config.yml"
+    fi
+
+    # Generate password and update config
+    echo "ℹ Generating secure password for web interface..."
+    cd "$PROJECT_DIR"
+    source "$CONFWATCH_HOME/venv/bin/activate"
+    python3 -c "
+from confwatch.core.scanner import update_config_with_password
+password = update_config_with_password('$CONFWATCH_HOME/config/config.yml')
+if password:
+    print(f'✓ Web interface password generated: {password}')
+    print('⚠️  SAVE THIS PASSWORD - it will not be shown again!')
+else:
+    print('⚠️  Could not generate password, check config file')
+"
 }
 
 # Initialize Git repository

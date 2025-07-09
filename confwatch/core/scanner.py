@@ -4,9 +4,41 @@ File scanner module for monitoring configuration files.
 
 import os
 import hashlib
+import yaml
+import secrets
+import string
 from pathlib import Path
 from typing import List, Dict, Optional
-import yaml
+
+
+def generate_secure_password(length: int = 24) -> str:
+    """Generate a secure random password."""
+    alphabet = string.ascii_letters + string.digits + "!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def update_config_with_password(config_path: str) -> str:
+    """Update config file with auto-generated password and return the password."""
+    try:
+        with open(config_path, 'r') as f:
+            config = yaml.safe_load(f)
+        
+        # Generate password if not already set
+        if config.get('web_auth', {}).get('password') == 'AUTO_GENERATE':
+            password = generate_secure_password(24)
+            config['web_auth']['password'] = password
+            
+            # Write back to config
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            return password
+        else:
+            return config.get('web_auth', {}).get('password', '')
+            
+    except Exception as e:
+        print(f"Error updating config: {e}")
+        return ''
 
 
 class FileScanner:

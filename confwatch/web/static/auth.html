@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ConfWatch - Authentication Required</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0a0a;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        .auth-container {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+            position: relative;
+        }
+
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #00ff00, #00cc00, #00ff00);
+            border-radius: 10px;
+            z-index: -1;
+            animation: borderGlow 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes borderGlow {
+            0% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .logo {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        .title {
+            font-size: 1.5em;
+            margin-bottom: 10px;
+            color: #ff6600;
+        }
+
+        .subtitle {
+            font-size: 1em;
+            margin-bottom: 30px;
+            color: #888;
+        }
+
+        .auth-form {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 5px;
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 3px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #00ff00;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+        }
+
+        .submit-btn {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .submit-btn:hover {
+            background: #00cc00;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.5);
+        }
+
+        .info {
+            font-size: 0.9em;
+            color: #888;
+            margin-top: 20px;
+            line-height: 1.4;
+        }
+
+        .warning {
+            color: #ff6600;
+            font-weight: bold;
+        }
+
+        .terminal-line {
+            display: inline-block;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 8px 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            border-top: 1px solid #333;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">ConfWatch</div>
+        <div class="title">[AUTHENTICATION REQUIRED]</div>
+        <div class="subtitle">Web Interface Access Control</div>
+        
+        <div class="auth-form">
+            <form id="authForm">
+                <div class="form-group">
+                    <label for="username">[USERNAME]:</label>
+                    <input type="text" id="username" name="username" placeholder="Enter username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">[PASSWORD]:</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+                <button type="submit" class="submit-btn">[LOGIN] Access ConfWatch</button>
+            </form>
+        </div>
+        
+        <div class="info">
+            <div class="warning">⚠️ SECURITY NOTICE:</div>
+            <div>• Credentials are configured in config.yml</div>
+            <div>• Password is auto-generated during installation</div>
+            <div>• Check installation output for credentials</div>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        [STATUS] Authentication required for ConfWatch Web Interface
+    </div>
+
+    <script>
+        document.getElementById('authForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            // Create basic auth header
+            const credentials = btoa(username + ':' + password);
+            
+            // Try to access the main page
+            fetch('/', {
+                headers: {
+                    'Authorization': 'Basic ' + credentials
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Store credentials and redirect
+                    sessionStorage.setItem('confwatch_auth', credentials);
+                    window.location.href = '/';
+                } else {
+                    alert('Invalid credentials. Please try again.');
+                    document.getElementById('password').value = '';
+                    document.getElementById('password').focus();
+                }
+            })
+            .catch(error => {
+                alert('Authentication failed. Please try again.');
+                console.error('Auth error:', error);
+            });
+        });
+        
+        // Focus on username field on load
+        document.getElementById('username').focus();
+    </script>
+</body>
+</html> 

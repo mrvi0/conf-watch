@@ -1,41 +1,22 @@
-# ConfWatch Configuration
-# List of files to monitor (one per line, starting with -)
-# 
-# IMPORTANT: Uncomment the files you want to monitor and add your own files.
-# Comment out or remove files you don't need.
-# 
-# Example:
-# - ~/.bashrc                    # Uncomment to monitor bashrc
-# - ~/my-project/.env           # Add your own files like this
+# ConfWatch Configuration File
+# This file defines which files to monitor for changes
 
-# Shell configuration files
-# - ~/.bashrc
-# - ~/.zshrc
-# - ~/.bash_profile
-# - ~/.profile
+# Web interface authentication
+web_auth:
+  enabled: true
+  username: "admin"
+  # Password will be auto-generated during installation (24 characters)
+  password: "AUTO_GENERATE"
 
-# SSH configuration
-# - ~/.ssh/config
-# - ~/.ssh/known_hosts
-
-# Git configuration
-# - ~/.gitconfig
-# - ~/.gitignore
-
-# Editor configuration
-# - ~/.vimrc
-# - ~/.config/nvim/init.vim
-# - ~/.config/code/settings.json
-
-# Application configuration
-# - ~/.config/terminator/config
-# - ~/.config/alacritty/alacritty.yml
-
-# Environment files
-# - ~/.env
-# - ~/.bash_aliases
-# - ~/.bash_functions
-
-# System configuration
-# - /etc/hosts
-# - /etc/fstab 
+# Files to monitor
+# You can use absolute paths, relative paths, or paths with ~ for home directory
+files:
+  - "~/.bashrc"
+  - "~/.zshrc"
+  - "~/.config/nvim/init.vim"
+  - "~/.config/alacritty/alacritty.yml"
+  - "~/.config/i3/config"
+  - "~/.config/polybar/config.ini"
+  - "/etc/hosts"
+  - "/etc/nginx/nginx.conf"
+  - "/etc/ssh/sshd_config" 
