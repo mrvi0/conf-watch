@@ -173,10 +173,12 @@ function showHistory(abs_path) {
                 if (comment) {
                     displayText += ` - ${comment}`;
                 }
+                displayText += ` [${entry.hash.slice(0,8)}]`;
                 
                 html += `<div style="margin-bottom:4px;">
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
                     <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
+                    <button class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
                 </div>`;
             });
             html += '</form>';
@@ -248,4 +250,12 @@ function closeOpenBlock() {
         openBlock.innerHTML = "";
         openBlock = null;
     }
+}
+
+function copyHash(hash) {
+    navigator.clipboard.writeText(hash).then(function() {
+        updateStatus(`[SUCCESS] Hash ${hash.slice(0,8)} copied to clipboard`);
+    }).catch(function(err) {
+        updateStatus(`[ERROR] Failed to copy hash: ${err}`);
+    });
 } 
