@@ -213,17 +213,35 @@ rollback_file() {
         return 1
     fi
     
+    # Проверяем, что коммит существует
+    if ! git rev-parse --verify "$commit_hash" >/dev/null 2>&1; then
+        colors::error "Commit $commit_hash not found in repository"
+        return 1
+    fi
+    
+    # Проверяем, что файл существует в коммите
+    if ! git show "$commit_hash:$safe_filename" >/dev/null 2>&1; then
+        colors::error "File not found in commit $commit_hash"
+        return 1
+    fi
+    
     # Confirm rollback
     if ! confirm "Are you sure you want to rollback $file to version $commit_hash?"; then
         colors::info "Rollback cancelled"
         return 0
     fi
     
-    # Restore file
-    git show "$commit_hash:$safe_filename" > "$file"
-    
-    colors::success "Successfully rolled back $file to version $commit_hash"
-    logging::info "File restored from commit: $commit_hash"
+    # Restore file with error handling
+    if git show "$commit_hash:$safe_filename" > "$file" 2>/dev/null; then
+        colors::success "Successfully rolled back $file to version $commit_hash"
+        logging::info "File restored from commit: $commit_hash"
+        
+        # Create snapshot after rollback
+        create_snapshot "$file"
+    else
+        colors::error "Failed to restore file from commit $commit_hash"
+        return 1
+    fi
 }
 
 # Tag current version

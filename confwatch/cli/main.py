@@ -218,11 +218,16 @@ def handle_rollback(args, config_file, repo_dir):
         commit_hash = target_version
     # Check if it's a short hash (7-8 characters)
     elif len(target_version) in [7, 8] and all(c in '0123456789abcdef' for c in target_version.lower()):
-        # Find the full hash
-        for entry in history:
-            if entry['hash'].startswith(target_version):
-                commit_hash = entry['hash']
-                break
+        # Find the full hash - check for multiple matches
+        matching_commits = [entry for entry in history if entry['hash'].startswith(target_version)]
+        if len(matching_commits) == 1:
+            commit_hash = matching_commits[0]['hash']
+        elif len(matching_commits) > 1:
+            print(f"Error: Multiple commits found for prefix '{target_version}'. Please use full commit hash.")
+            print("Matching commits:")
+            for entry in matching_commits:
+                print(f"  {entry['hash'][:8]} - {entry['message'].split('Snapshot:')[0].strip()}")
+            return
         else:
             print(f"Error: Commit hash '{target_version}' not found in history.")
             return
@@ -230,19 +235,24 @@ def handle_rollback(args, config_file, repo_dir):
     elif target_version.startswith('v'):
         try:
             commit_hash = storage.repo.git.rev_parse(target_version)
-        except:
-            print(f"Error: Tag '{target_version}' not found.")
+        except Exception as e:
+            print(f"Error: Tag '{target_version}' not found: {e}")
             return
     else:
         # Try to find by comment
-        found_commit = None
+        found_commits = []
         for entry in history:
-            if target_version in entry['message']:
-                found_commit = entry['hash']
-                break
+            if target_version.lower() in entry['message'].lower():
+                found_commits.append(entry)
         
-        if found_commit:
-            commit_hash = found_commit
+        if len(found_commits) == 1:
+            commit_hash = found_commits[0]['hash']
+        elif len(found_commits) > 1:
+            print(f"Error: Multiple commits found matching '{target_version}'. Please be more specific.")
+            print("Matching commits:")
+            for entry in found_commits:
+                print(f"  {entry['hash'][:8]} - {entry['message'].split('Snapshot:')[0].strip()}")
+            return
         else:
             print(f"Error: Version '{target_version}' not found in history.")
             print("Available versions:")
@@ -253,18 +263,33 @@ def handle_rollback(args, config_file, repo_dir):
     try:
         # Получаем safe_name для файла
         safe_name = storage._safe_name(args.file)
-        # Получаем содержимое файла из git по нужному коммиту
-        file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
-        # Перезаписываем отслеживаемый файл этим содержимым
+        
+        # Проверяем, что файл существует в коммите
+        try:
+            file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
+        except Exception as e:
+            print(f"Error: File not found in commit {commit_hash[:8]}: {e}")
+            return
+        
+        # Перезаписываем отслеживаемый файл этим содержимым с правильной кодировкой
         scanner = FileScanner(config_file)
         expanded_path = scanner.expand_path(args.file)
-        with open(expanded_path, 'w') as f:
-            f.write(file_content)
+        
+        try:
+            with open(expanded_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+        except Exception as e:
+            print(f"Error writing file {args.file}: {e}")
+            return
+        
         print(f"Restored {args.file} to state from commit {commit_hash[:8]}")
+        
         # Создаём снапшот с комментарием
         rollback_comment = f"Rollback from commit {commit_hash[:8]}"
         if storage.save_file(args.file, file_content, comment=rollback_comment, force=True):
             print(f"Snapshot created for rollback: {rollback_comment}")
+        else:
+            print("Warning: Failed to create rollback snapshot")
     except Exception as e:
         print(f"Error rolling back: {e}")
 

@@ -37,9 +37,20 @@ def api_rollback():
         if not file_path or not commit_hash:
             return jsonify({'success': False, 'error': 'Missing file path or commit hash'})
         
+        # Валидация пути - проверяем, что файл находится в разрешенных директориях
+        scanner = FileScanner(CONFIG_FILE)
+        expanded_path = scanner.expand_path(file_path)
+        
+        # Проверяем, что файл существует и находится в разрешенных директориях
+        if not os.path.exists(expanded_path):
+            return jsonify({'success': False, 'error': f'File not found: {file_path}'})
+        
+        # Получаем абсолютный путь для корректной работы с storage
+        abs_path = str(Path(file_path).expanduser().resolve())
+        
         # Выполняем rollback
         storage = GitStorage(REPO_DIR)
-        history = storage.get_file_history(file_path)
+        history = storage.get_file_history(abs_path)
         
         if not history:
             return jsonify({'success': False, 'error': f'No history found for {file_path}'})
@@ -48,30 +59,34 @@ def api_rollback():
         commit_exists = any(entry['hash'] == commit_hash for entry in history)
         if not commit_exists:
             # Попробуем найти по короткому хешу
-            commit_exists = any(entry['hash'].startswith(commit_hash) for entry in history)
-            if commit_exists:
-                # Найдём полный хеш
-                for entry in history:
-                    if entry['hash'].startswith(commit_hash):
-                        commit_hash = entry['hash']
-                        break
+            matching_commits = [entry for entry in history if entry['hash'].startswith(commit_hash)]
+            if len(matching_commits) == 1:
+                commit_hash = matching_commits[0]['hash']
+            elif len(matching_commits) > 1:
+                return jsonify({'success': False, 'error': f'Multiple commits found for prefix {commit_hash[:8]}. Please use full commit hash.'})
             else:
                 return jsonify({'success': False, 'error': f'Commit {commit_hash[:8]} not found in history'})
         
-        # Получаем safe_name для файла
-        safe_name = storage._safe_name(file_path)
-        # Получаем содержимое файла из git по нужному коммиту
-        file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
+        # Получаем safe_name для файла используя абсолютный путь
+        safe_name = storage._safe_name(abs_path)
         
-        # Перезаписываем отслеживаемый файл этим содержимым
-        scanner = FileScanner(CONFIG_FILE)
-        expanded_path = scanner.expand_path(file_path)
-        with open(expanded_path, 'w') as f:
-            f.write(file_content)
+        try:
+            # Получаем содержимое файла из git по нужному коммиту
+            file_content = storage.repo.git.show(f"{commit_hash}:{safe_name}")
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Failed to retrieve file content from commit {commit_hash[:8]}: {str(e)}'})
         
-        # Создаём снапшот с комментарием
+        # Перезаписываем отслеживаемый файл этим содержимым с правильной кодировкой
+        try:
+            with open(expanded_path, 'w', encoding='utf-8') as f:
+                f.write(file_content)
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Failed to write file {file_path}: {str(e)}'})
+        
+        # Создаём снапшот с комментарием используя абсолютный путь
         rollback_comment = f"Rollback from commit {commit_hash[:8]}"
-        storage.save_file(file_path, file_content, comment=rollback_comment, force=True)
+        if not storage.save_file(abs_path, file_content, comment=rollback_comment, force=True):
+            return jsonify({'success': False, 'error': 'Failed to create rollback snapshot'})
         
         return jsonify({
             'success': True, 
@@ -118,24 +133,42 @@ def get_diff():
         file_path = request.args.get('file')  # оригинальный путь
         if not file_path:
             return jsonify({'error': 'File parameter required'}), 400
+        
         scanner = FileScanner(CONFIG_FILE)
         expanded_path = scanner.expand_path(file_path)
+        
         if not os.path.exists(expanded_path):
             return jsonify({'error': 'File not found'}), 404
-        # Читаем текущее содержимое файла (expanded_path)
-        with open(expanded_path, 'r') as f:
-            current_content = f.read()
+        
+        # Получаем абсолютный путь для корректной работы с storage
+        abs_path = str(Path(file_path).expanduser().resolve())
+        
+        # Читаем текущее содержимое файла с правильной кодировкой
+        try:
+            with open(expanded_path, 'r', encoding='utf-8') as f:
+                current_content = f.read()
+        except Exception as e:
+            return jsonify({'error': f'Failed to read file: {str(e)}'}), 500
+        
         storage = GitStorage(REPO_DIR)
-        # История по оригинальному пути
-        history = storage.get_file_history(file_path)
+        # История по абсолютному пути
+        history = storage.get_file_history(abs_path)
+        
         if not history:
             return jsonify({'error': 'No history found'}), 404
+        
         if len(history) < 2:
             return jsonify({'error': 'No previous version found'}), 404
+        
         prev_commit = history[1]['hash']
         curr_commit = history[0]['hash']
-        diff = storage.get_file_diff(file_path, prev_commit, curr_commit)
-        return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        
+        try:
+            diff = storage.get_file_diff(abs_path, prev_commit, curr_commit)
+            return diff, 200, {'Content-Type': 'text/plain; charset=utf-8'}
+        except Exception as e:
+            return jsonify({'error': f'Failed to generate diff: {str(e)}'}), 500
+            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -145,10 +178,16 @@ def get_history():
         file_path = request.args.get('file')
         if not file_path:
             return jsonify({'error': 'File parameter required'}), 400
+        
+        # Получаем абсолютный путь для корректной работы с storage
+        abs_path = str(Path(file_path).expanduser().resolve())
+        
         storage = GitStorage(REPO_DIR)
-        history = storage.get_file_history(file_path)
+        history = storage.get_file_history(abs_path)
+        
         if not history:
             return jsonify({'error': 'No history found'}), 404
+        
         return jsonify({'history': history}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -160,15 +199,24 @@ def create_snapshot():
         file_path = data.get('file')
         comment = data.get('comment', '').strip()
         force = bool(data.get('force', False))
+        
         if not file_path:
             return jsonify({'success': False, 'error': 'File parameter required'}), 400
+        
         scanner = FileScanner(CONFIG_FILE)
         expanded_path = scanner.expand_path(file_path)
         abs_path = str(Path(file_path).expanduser().resolve())
+        
         if not os.path.exists(expanded_path):
             return jsonify({'success': False, 'error': f'File not found: {file_path}'}), 400
-        with open(expanded_path, 'r') as f:
-            content = f.read()
+        
+        # Читаем файл с правильной кодировкой
+        try:
+            with open(expanded_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+        except Exception as e:
+            return jsonify({'success': False, 'error': f'Failed to read file: {str(e)}'}), 500
+        
         storage = GitStorage(REPO_DIR)
         if storage.save_file(abs_path, content, comment=comment, force=force):
             return jsonify({'success': True, 'message': f'Snapshot created for {abs_path}'})

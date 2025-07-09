@@ -40,6 +40,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 function loadFiles() {
+    // Предотвращаем стандартное поведение браузера
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
+    
     updateStatus("[INFO] Scanning filesystem for monitored files...");
     fetch("/api/files")
         .then(response => response.json())
@@ -192,12 +198,12 @@ function showHistory(abs_path) {
                 html += `<div style="margin-bottom:4px;">
                     <input type="checkbox" class="terminal-checkbox" name="commit" value="${entry.hash}" id="commit_${idx}" />
                     <label for="commit_${idx}" style="color:#00ff00;cursor:pointer;">[${entry.date.slice(0,19).replace('T',' ')}] ${displayText}</label>
-                    <button class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
-                    <button class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${originalPath}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
+                    <button type="button" class="btn" style="margin-left:10px;font-size:10px;padding:2px 6px;" onclick="copyHash('${entry.hash}')" title="Copy full hash">[COPY]</button>
+                    <button type="button" class="btn" style="margin-left:5px;font-size:10px;padding:2px 6px;background-color:#ff6600;" onclick="rollbackFile('${originalPath}', '${entry.hash}')" title="Rollback to this commit">[ROLLBACK]</button>
                 </div>`;
             });
             html += '</form>';
-            html += '<button class="btn" id="show-diff-btn" disabled>[SHOW DIFF]</button>';
+            html += '<button type="button" class="btn" id="show-diff-btn" disabled>[SHOW DIFF]</button>';
             html += '<div id="custom-diff-result"></div>';
             historyContainer.innerHTML = html;
 
@@ -205,6 +211,14 @@ function showHistory(abs_path) {
             const form = document.getElementById('history-diff-form');
             const btn = document.getElementById('show-diff-btn');
             let selected = [];
+            
+            // Предотвращаем отправку формы при нажатии Enter
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            });
+            
             form.addEventListener('change', function() {
                 selected = Array.from(form.elements['commit'])
                     .filter(el => el.checked)
@@ -268,6 +282,10 @@ function closeOpenBlock() {
 }
 
 function copyHash(hash) {
+    // Предотвращаем стандартное поведение браузера
+    event.preventDefault();
+    event.stopPropagation();
+    
     navigator.clipboard.writeText(hash).then(function() {
         updateStatus(`[SUCCESS] Hash ${hash.slice(0,8)} copied to clipboard`);
     }).catch(function(err) {
@@ -285,21 +303,31 @@ function showConfirmDialog(message, onConfirm) {
     modal.style.display = 'flex';
     
     // Обработчики событий
-    const handleConfirm = () => {
+    const handleConfirm = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         modal.style.display = 'none';
         onConfirm();
         // Удаляем обработчики
         confirmYes.removeEventListener('click', handleConfirm);
         confirmNo.removeEventListener('click', handleCancel);
         document.removeEventListener('keydown', handleKeydown);
+        modal.removeEventListener('click', handleModalClick);
     };
     
-    const handleCancel = () => {
+    const handleCancel = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
         modal.style.display = 'none';
         // Удаляем обработчики
         confirmYes.removeEventListener('click', handleConfirm);
         confirmNo.removeEventListener('click', handleCancel);
         document.removeEventListener('keydown', handleKeydown);
+        modal.removeEventListener('click', handleModalClick);
     };
     
     const handleKeydown = (e) => {
@@ -310,15 +338,26 @@ function showConfirmDialog(message, onConfirm) {
         }
     };
     
+    const handleModalClick = (e) => {
+        if (e.target === modal) {
+            handleCancel();
+        }
+    };
+    
     confirmYes.addEventListener('click', handleConfirm);
     confirmNo.addEventListener('click', handleCancel);
     document.addEventListener('keydown', handleKeydown);
+    modal.addEventListener('click', handleModalClick);
     
     // Фокус на кнопку подтверждения
     confirmYes.focus();
 }
 
 function rollbackFile(filePath, commitHash) {
+    // Предотвращаем стандартное поведение браузера
+    event.preventDefault();
+    event.stopPropagation();
+    
     const message = `
         <div style="margin-bottom: 15px;">
             <strong>[WARNING]</strong> You are about to rollback a file to a previous state.
@@ -354,20 +393,41 @@ function rollbackFile(filePath, commitHash) {
                 commit_hash: commitHash
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => { 
+                    throw new Error(data.error || `HTTP ${response.status}`); 
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 updateStatus(`[SUCCESS] ${data.message}`);
                 // Обновляем историю после rollback
                 setTimeout(() => {
-                    showHistory(filePath);
+                    // Находим абсолютный путь для обновления истории
+                    const fileList = document.getElementById("fileList");
+                    const fileItems = fileList.querySelectorAll('.file-item');
+                    let absPath = filePath; // fallback
+                    
+                    for (let item of fileItems) {
+                        const fileInfo = item.querySelector('.file-name');
+                        if (fileInfo && fileInfo.textContent === filePath) {
+                            absPath = item.querySelector('.file-status').textContent.includes('[OK]') ? 
+                                     item.querySelector('.file-name').textContent : filePath;
+                            break;
+                        }
+                    }
+                    showHistory(absPath);
                 }, 1000);
             } else {
                 updateStatus(`[ERROR] ${data.error}`);
             }
         })
         .catch(error => {
-            updateStatus(`[ERROR] Failed to rollback: ${error}`);
+            console.error("[ERROR] Rollback failed:", error);
+            updateStatus(`[ERROR] Failed to rollback: ${error.message}`);
         });
     });
 } 

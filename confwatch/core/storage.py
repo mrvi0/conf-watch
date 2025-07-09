@@ -88,6 +88,11 @@ class GitStorage(BaseStorage):
         """Get Git history for file."""
         try:
             safe_name = self._safe_name(file_path)
+            
+            # Проверяем, что файл существует в репозитории
+            if not (self.storage_path / safe_name).exists():
+                return []
+            
             commits = list(self.repo.iter_commits(paths=safe_name))
             
             history = []
@@ -108,6 +113,19 @@ class GitStorage(BaseStorage):
         """Get Git diff between versions."""
         try:
             safe_name = self._safe_name(file_path)
+            
+            # Проверяем, что файл существует в репозитории
+            if not (self.storage_path / safe_name).exists():
+                return ""
+            
+            # Проверяем, что коммиты существуют
+            try:
+                self.repo.commit(version1)
+                self.repo.commit(version2)
+            except Exception as e:
+                print(f"Error: Invalid commit hash: {e}")
+                return ""
+            
             diff = self.repo.git.diff(version1, version2, '--', safe_name)
             return diff
         except Exception as e:
