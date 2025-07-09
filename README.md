@@ -85,17 +85,23 @@ Edit `~/.confwatch/config/config.yml` to specify which files to monitor:
 ```bash
 confwatch list                    # List monitored files
 confwatch snapshot [files...]     # Create snapshots (all or specific files)
+confwatch snapshot --comment "msg" # Create snapshot with comment
 confwatch diff <file>             # Show diff (latest vs previous)
 confwatch history <file>          # Show file history (with commit hashes)
+confwatch tag <file> <tag>        # Tag current version
+confwatch rollback <file> <ver>   # Rollback to specific version
 confwatch web [options]           # Start web interface
 confwatch --help                  # Show all commands
 ```
 
 #### Examples
 ```bash
-confwatch snapshot ~/.bashrc
+confwatch snapshot ~/.bashrc --comment "After installing nvm"
+confwatch snapshot --comment "Daily backup" --force
 confwatch diff ~/.env
 confwatch history /etc/nginx/nginx.conf
+confwatch tag ~/.bashrc "after-nvm-install"
+confwatch rollback ~/.bashrc abc1234
 confwatch web --port 9000
 ```
 
