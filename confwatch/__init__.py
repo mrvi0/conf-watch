@@ -5,9 +5,9 @@ A powerful tool for monitoring configuration files, maintaining version history,
 and providing easy rollback capabilities.
 """
 
-__version__ = "1.0.0"
-__author__ = "ConfWatch Team"
-__email__ = "confwatch@example.com"
+__version__ = "3.0.0"
+__author__ = "Mr Vi"
+__email__ = "support@b4dcat.ru"
 
 from .core.scanner import FileScanner
 from .core.storage import GitStorage, SQLiteStorage
