@@ -5,10 +5,44 @@ All notable changes to the ConfWatch project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v3.0.0] - 2025-07-10
 
 ### Added
-- `feature/auth-system` branch for authorization system development
+- **🔐 Secure Authentication System** with unique passwords per installation
+- **AuthManager class** (`confwatch/core/auth.py`) for password generation and verification
+- **Login page** (`confwatch/web/static/login.html`) with terminal-style design
+- **Session-based authentication** with Flask sessions
+- **Protected web API endpoints** with `@require_auth` decorator
+- **Logout functionality** with styled button matching rollback confirmation
+- **CLI command** `confwatch reset-password` for password management
+- **Dynamic version display** in web UI via `/api/version` endpoint
+- **Password generation** integrated into installation scripts
+- **ASCII art** added to project headers in documentation
+
+### Changed
+- **Updated installation scripts** (`install.sh`, `install-dev.sh`) to generate passwords
+- **Enhanced web interface** with authentication protection
+- **Improved documentation** with authentication features and examples
+- **Updated README files** (English and Russian) with new functionality
+- **Bumped version** to 3.0.0 for major authentication feature release
+- **Updated author information** to "Mr Vi" with support@b4dcat.ru
+
+### Security
+- **Unique password per installation** prevents unauthorized access
+- **SHA-256 password hashing** for secure storage
+- **Session management** for secure login state
+- **No default passwords** - each installation is different
+
+### Documentation
+- Added authentication features to both English and Russian README
+- Updated CLI examples with `reset-password` command
+- Added FAQ entries for password management
+- Updated installation instructions with security information
+
+## [Unreleased]
+
+### Planned
+- Future enhancements and improvements
 
 ## [v2.2.1] - 2025-07-10
 
