@@ -220,4 +220,4 @@ A: See [Development](#development) below.
 ---
 
 ## License
-[MIT](LICENCE)
+[MIT](LICENSE)
