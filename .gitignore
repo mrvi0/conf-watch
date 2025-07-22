@@ -73,4 +73,7 @@ ENV/
 *.log
 
 # Ignore old python dir
-python/ 
+python/
+
+# Temporary files
+temp/ 
