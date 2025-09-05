@@ -42,6 +42,8 @@ ConfWatch is a Python-based tool for monitoring and versioning configuration fil
 - **Custom checkboxes and controls** (all styled for terminal look)
 - **Animated CLI demo in web** (see usage examples live)
 - **Secure authentication** (unique password per installation)
+- **Automatic file monitoring** (watchdog + polling modes with daemon)
+- **Remote web access** (accessible from any IP, not just localhost)
 - **Easy install/uninstall** (user and dev modes)
 - **Isolated virtualenv** (no system Python pollution)
 
@@ -101,6 +103,9 @@ confwatch history <file>          # Show file history (with commit hashes)
 confwatch tag <file> <tag>        # Tag current version
 confwatch rollback <file> <ver>   # Rollback to specific version
 confwatch web [options]           # Start web interface
+confwatch daemon start            # Start automatic file monitoring
+confwatch daemon stop             # Stop automatic file monitoring
+confwatch daemon status           # Show daemon status
 confwatch reset-password          # Reset web interface password
 confwatch --help                  # Show all commands
 ```
@@ -114,6 +119,9 @@ confwatch history /etc/nginx/nginx.conf
 confwatch tag ~/.bashrc "after-nvm-install"
 confwatch rollback ~/.bashrc abc1234
 confwatch web --port 9000
+confwatch daemon start --foreground    # Start monitoring in foreground
+confwatch daemon start --polling       # Use polling instead of watchdog
+confwatch daemon restart
 confwatch reset-password --force
 ```
 
@@ -121,7 +129,8 @@ confwatch reset-password --force
 
 ## Web Interface
 
-- Start with `confwatch web` (default: http://localhost:8080)
+- Start with `confwatch web` (default: http://0.0.0.0:8080)
+- **Remote access** - accessible from any IP address, not just localhost
 - **Secure authentication** - each installation gets a unique password
 - Browse all monitored files, see status and history
 - Click [HISTORY] to see all snapshots for a file
@@ -133,6 +142,43 @@ confwatch reset-password --force
 **[SCREENSHOT PLACEHOLDER: Main web interface with file list, status, and animated CLI demo]**
 **[SCREENSHOT PLACEHOLDER: File history view with custom checkboxes and [SHOW DIFF] button]**
 **[SCREENSHOT PLACEHOLDER: Diff view between two arbitrary snapshots]**
+
+---
+
+## Automatic File Monitoring
+
+ConfWatch can automatically monitor your configuration files and create snapshots when they change:
+
+### Start Monitoring
+```bash
+confwatch daemon start              # Start in background (recommended)
+confwatch daemon start --foreground # Start in foreground for debugging
+confwatch daemon start --polling    # Use polling instead of watchdog
+```
+
+### Monitor Status
+```bash
+confwatch daemon status             # Check if daemon is running
+```
+
+### Stop Monitoring
+```bash
+confwatch daemon stop               # Stop background monitoring
+confwatch daemon restart            # Restart daemon
+```
+
+### How it Works
+- **Watchdog mode** (default): Uses system file events (inotify on Linux) for instant detection
+- **Polling mode** (fallback): Checks files every 30 seconds using hash comparison
+- **Debouncing**: Waits 5 seconds after last change before creating snapshot
+- **Auto comments**: Snapshots get `[AUTO]` prefix with timestamp
+- **Smart filtering**: Ignores temporary files (.swp, .tmp, .bak, etc.)
+
+### Logs
+- **PID file**: `~/.confwatch/daemon.pid`
+- **Log file**: `~/.confwatch/daemon.log`
+- **Background mode**: All output goes to log file
+- **Foreground mode**: Output to terminal
 
 ---
 
@@ -173,6 +219,7 @@ After install, you will have:
   - Install Python 3.7+, pip, and git
 - **Web interface not opening**
   - Make sure nothing else is using port 8080 (or use `confwatch web --port 9000`)
+  - Check if firewall is blocking the port for remote access
 - **Permission errors**
   - Ensure you have write access to `~/.confwatch`
 - **How to uninstall?**
@@ -202,6 +249,12 @@ A: `confwatch reset-password` (with confirmation) or `confwatch reset-password -
 
 **Q: What if I forgot my web interface password?**
 A: Use `confwatch reset-password` to generate a new one.
+
+**Q: How does automatic monitoring work?**
+A: Run `confwatch daemon start` to monitor files. It uses watchdog (inotify) for instant detection or falls back to polling every 30 seconds. Creates snapshots automatically with `[AUTO]` prefix.
+
+**Q: Can I access the web interface from another computer?**
+A: Yes! The web server binds to `0.0.0.0:8080` by default, making it accessible from any IP. Just make sure your firewall allows the port.
 
 **Q: How do I develop or contribute?**
 A: See [Development](#development) below.
