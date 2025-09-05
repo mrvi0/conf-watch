@@ -64,9 +64,62 @@ check_pip() {
         PIP_CMD="pip"
         print_success "Found pip"
     else
-        print_error "pip is required but not installed."
-        print_info "Please install pip and try again."
-        exit 1
+        print_info "pip not found, attempting to install..."
+        
+        # Try to install pip using different methods
+        if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            print_info "Installing pip using apt-get..."
+            apt-get update -qq && apt-get install -y python3-pip python3-venv
+        elif command -v yum &> /dev/null; then
+            # CentOS/RHEL
+            print_info "Installing pip using yum..."
+            yum install -y python3-pip python3-venv
+        elif command -v dnf &> /dev/null; then
+            # Fedora
+            print_info "Installing pip using dnf..."
+            dnf install -y python3-pip python3-venv
+        elif command -v pacman &> /dev/null; then
+            # Arch Linux
+            print_info "Installing pip using pacman..."
+            pacman -S --noconfirm python-pip
+        elif command -v zypper &> /dev/null; then
+            # openSUSE
+            print_info "Installing pip using zypper..."
+            zypper install -y python3-pip python3-venv
+        elif command -v apk &> /dev/null; then
+            # Alpine Linux
+            print_info "Installing pip using apk..."
+            apk add --no-cache python3-dev py3-pip py3-virtualenv
+        else
+            # Try get-pip.py as fallback
+            print_info "Trying to install pip using get-pip.py..."
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3
+            elif command -v wget &> /dev/null; then
+                wget -qO- https://bootstrap.pypa.io/get-pip.py | python3
+            else
+                print_error "Could not install pip automatically."
+                print_info "Please install pip manually and try again:"
+                print_info "  Ubuntu/Debian: apt-get install python3-pip python3-venv"
+                print_info "  CentOS/RHEL: yum install python3-pip python3-venv"
+                print_info "  Fedora: dnf install python3-pip python3-venv"
+                exit 1
+            fi
+        fi
+        
+        # Verify pip installation
+        if command -v pip3 &> /dev/null; then
+            PIP_CMD="pip3"
+            print_success "Successfully installed pip3"
+        elif command -v pip &> /dev/null; then
+            PIP_CMD="pip"
+            print_success "Successfully installed pip"
+        else
+            print_error "Failed to install pip."
+            print_info "Please install pip manually and try again."
+            exit 1
+        fi
     fi
 }
 
@@ -75,9 +128,50 @@ check_git() {
     if command -v git &> /dev/null; then
         print_success "Found git: $(git --version)"
     else
-        print_error "git is required but not installed."
-        print_info "Please install git and try again."
-        exit 1
+        print_info "git not found, attempting to install..."
+        
+        # Try to install git using different methods
+        if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            print_info "Installing git using apt-get..."
+            apt-get update -qq && apt-get install -y git
+        elif command -v yum &> /dev/null; then
+            # CentOS/RHEL
+            print_info "Installing git using yum..."
+            yum install -y git
+        elif command -v dnf &> /dev/null; then
+            # Fedora
+            print_info "Installing git using dnf..."
+            dnf install -y git
+        elif command -v pacman &> /dev/null; then
+            # Arch Linux
+            print_info "Installing git using pacman..."
+            pacman -S --noconfirm git
+        elif command -v zypper &> /dev/null; then
+            # openSUSE
+            print_info "Installing git using zypper..."
+            zypper install -y git
+        elif command -v apk &> /dev/null; then
+            # Alpine Linux
+            print_info "Installing git using apk..."
+            apk add --no-cache git
+        else
+            print_error "Could not install git automatically."
+            print_info "Please install git manually and try again:"
+            print_info "  Ubuntu/Debian: apt-get install git"
+            print_info "  CentOS/RHEL: yum install git"
+            print_info "  Fedora: dnf install git"
+            exit 1
+        fi
+        
+        # Verify git installation
+        if command -v git &> /dev/null; then
+            print_success "Successfully installed git: $(git --version)"
+        else
+            print_error "Failed to install git."
+            print_info "Please install git manually and try again."
+            exit 1
+        fi
     fi
 }
 

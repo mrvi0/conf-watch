@@ -63,9 +63,62 @@ check_pip() {
         PIP_CMD="pip"
         print_success "Found pip"
     else
-        print_error "pip is required but not installed."
-        print_info "Please install pip and try again."
-        exit 1
+        print_info "pip not found, attempting to install..."
+        
+        # Try to install pip using different methods
+        if command -v apt-get &> /dev/null; then
+            # Debian/Ubuntu
+            print_info "Installing pip using apt-get..."
+            apt-get update -qq && apt-get install -y python3-pip python3-venv
+        elif command -v yum &> /dev/null; then
+            # CentOS/RHEL
+            print_info "Installing pip using yum..."
+            yum install -y python3-pip python3-venv
+        elif command -v dnf &> /dev/null; then
+            # Fedora
+            print_info "Installing pip using dnf..."
+            dnf install -y python3-pip python3-venv
+        elif command -v pacman &> /dev/null; then
+            # Arch Linux
+            print_info "Installing pip using pacman..."
+            pacman -S --noconfirm python-pip
+        elif command -v zypper &> /dev/null; then
+            # openSUSE
+            print_info "Installing pip using zypper..."
+            zypper install -y python3-pip python3-venv
+        elif command -v apk &> /dev/null; then
+            # Alpine Linux
+            print_info "Installing pip using apk..."
+            apk add --no-cache python3-dev py3-pip py3-virtualenv
+        else
+            # Try get-pip.py as fallback
+            print_info "Trying to install pip using get-pip.py..."
+            if command -v curl &> /dev/null; then
+                curl -fsSL https://bootstrap.pypa.io/get-pip.py | python3
+            elif command -v wget &> /dev/null; then
+                wget -qO- https://bootstrap.pypa.io/get-pip.py | python3
+            else
+                print_error "Could not install pip automatically."
+                print_info "Please install pip manually and try again:"
+                print_info "  Ubuntu/Debian: apt-get install python3-pip python3-venv"
+                print_info "  CentOS/RHEL: yum install python3-pip python3-venv"
+                print_info "  Fedora: dnf install python3-pip python3-venv"
+                exit 1
+            fi
+        fi
+        
+        # Verify pip installation
+        if command -v pip3 &> /dev/null; then
+            PIP_CMD="pip3"
+            print_success "Successfully installed pip3"
+        elif command -v pip &> /dev/null; then
+            PIP_CMD="pip"
+            print_success "Successfully installed pip"
+        else
+            print_error "Failed to install pip."
+            print_info "Please install pip manually and try again."
+            exit 1
+        fi
     fi
 }
 

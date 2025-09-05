@@ -52,7 +52,7 @@ ConfWatch is a Python-based tool for monitoring and versioning configuration fil
 ### One-line install (recommended for users)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/conf-watch/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/mrvi0/conf-watch/main/install.sh | bash
 ```
 
 - Installs to `~/.confwatch/`
@@ -63,7 +63,7 @@ curl -fsSL https://raw.githubusercontent.com/yourusername/conf-watch/main/instal
 ### Development install (for contributors)
 
 ```bash
-git clone https://github.com/yourusername/conf-watch.git
+git clone https://github.com/mrvi0/conf-watch.git
 cd conf-watch
 ./install-dev.sh
 ```
