@@ -96,7 +96,14 @@ class ConfWatchUpdater:
         return True
     
     def backup_current_installation(self) -> tuple:
-        """Create backups of current installation."""
+        """Create backups of current installation.
+        
+        NOTE: This only backs up code/executable files that will be replaced.
+        User data is NEVER touched during updates:
+        - ~/.confwatch/config/ (configuration files)
+        - ~/.confwatch/repo/ (file history and snapshots)
+        - ~/.confwatch/venv/ (virtual environment, only packages updated)
+        """
         # Backup Python module
         module_backup_dir = self.confwatch_module_dir + ".backup"
         if os.path.exists(module_backup_dir):
@@ -219,8 +226,16 @@ fi
             print("  1. Download the latest version")
             print("  2. Stop any running daemon")
             print("  3. Update Python modules and dependencies")
-            print("  4. Preserve your configuration and data")
-            print("  5. Restart daemon if it was running")
+            print("  4. Update web interface files")
+            print("  5. Update launcher script")
+            print("  6. Restart daemon if it was running")
+            print("")
+            print("✅ PRESERVED (will NOT be touched):")
+            print("  • Your configuration files (~/.confwatch/config/)")
+            print("  • All file history and snapshots (~/.confwatch/repo/)")
+            print("  • Authentication settings (auth.yml)")
+            print("  • Virtual environment (only packages updated)")
+            print("")
             response = input("Continue with update? (y/N): ")
             if response.lower() not in ['y', 'yes']:
                 print("Update cancelled.")
@@ -228,6 +243,27 @@ fi
         
         # Stop daemon if running
         daemon_was_running = self.check_daemon_status()
+        
+        # Verify that user data directories exist and will be preserved
+        config_dir = os.path.join(self.confwatch_home, "config")
+        if os.path.exists(config_dir):
+            print(f"✅ Configuration directory found: {config_dir}")
+        
+        if os.path.exists(self.repo_dir):
+            print(f"✅ Repository directory found: {self.repo_dir}")
+            # Count git commits to show user their history is safe
+            try:
+                result = subprocess.run(
+                    ["git", "rev-list", "--count", "HEAD"],
+                    cwd=self.repo_dir,
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    commit_count = result.stdout.strip()
+                    print(f"✅ Found {commit_count} snapshots in history (will be preserved)")
+            except Exception:
+                pass
         
         # Create temporary directory for download
         with tempfile.TemporaryDirectory() as temp_dir:
