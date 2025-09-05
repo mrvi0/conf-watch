@@ -104,13 +104,14 @@ class ConfWatchUpdater:
         - ~/.confwatch/repo/ (file history and snapshots)
         - ~/.confwatch/venv/ (virtual environment, only packages updated)
         """
-        # Backup Python module
-        module_backup_dir = self.confwatch_module_dir + ".backup"
+        # Backup Python module (backup the confwatch subdirectory)
+        confwatch_module_path = os.path.join(self.confwatch_module_dir, "confwatch")
+        module_backup_dir = confwatch_module_path + ".backup"
         if os.path.exists(module_backup_dir):
             shutil.rmtree(module_backup_dir)
         
-        if os.path.exists(self.confwatch_module_dir):
-            shutil.move(self.confwatch_module_dir, module_backup_dir)
+        if os.path.exists(confwatch_module_path):
+            shutil.move(confwatch_module_path, module_backup_dir)
         
         # Backup web files
         web_backup_dir = self.web_dir + ".backup"
@@ -126,11 +127,12 @@ class ConfWatchUpdater:
         """Restore backups on update failure."""
         print("🔄 Restoring backup...")
         
-        # Restore module
+        # Restore module (restore to confwatch-module/confwatch)
         if os.path.exists(module_backup_dir):
-            if os.path.exists(self.confwatch_module_dir):
-                shutil.rmtree(self.confwatch_module_dir)
-            shutil.move(module_backup_dir, self.confwatch_module_dir)
+            confwatch_module_path = os.path.join(self.confwatch_module_dir, "confwatch")
+            if os.path.exists(confwatch_module_path):
+                shutil.rmtree(confwatch_module_path)
+            shutil.move(module_backup_dir, confwatch_module_path)
         
         # Restore web files
         if os.path.exists(web_backup_dir):
@@ -141,7 +143,17 @@ class ConfWatchUpdater:
     def update_python_module(self, temp_dir: str):
         """Update Python module."""
         new_module_dir = os.path.join(temp_dir, "confwatch")
-        shutil.copytree(new_module_dir, self.confwatch_module_dir)
+        target_module_dir = os.path.join(self.confwatch_module_dir, "confwatch")
+        
+        # Create confwatch-module directory if it doesn't exist
+        os.makedirs(self.confwatch_module_dir, exist_ok=True)
+        
+        # Remove existing module if present
+        if os.path.exists(target_module_dir):
+            shutil.rmtree(target_module_dir)
+        
+        # Copy the confwatch module to confwatch-module/confwatch
+        shutil.copytree(new_module_dir, target_module_dir)
     
     def update_web_interface(self, temp_dir: str):
         """Update web interface files."""
