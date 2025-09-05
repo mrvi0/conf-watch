@@ -5,7 +5,7 @@ A powerful tool for monitoring configuration files, maintaining version history,
 and providing easy rollback capabilities.
 """
 
-__version__ = "3.2.1"
+__version__ = "3.3.0"
 __author__ = "Mr Vi"
 __email__ = "support@b4dcat.ru"
 
