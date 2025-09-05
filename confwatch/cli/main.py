@@ -16,6 +16,7 @@ from confwatch.core.scanner import FileScanner
 from confwatch.core.storage import GitStorage
 from confwatch.core.diff import DiffViewer
 from confwatch.web.app import run_web_server
+from confwatch.core.colors import print_header, print_success, print_error, print_warning, colored
 
 def main():
     """Main CLI entry point."""
@@ -474,14 +475,17 @@ def handle_reset_password(args, config_file):
     """Handle reset password command."""
     from confwatch.core.auth import AuthManager
     
+    print_header("PASSWORD RESET", "yellow")
+    
     auth = AuthManager(config_file)
     
     if not args.force:
         print("This will reset the web interface password.")
         print("You will need to use the new password to access the web interface.")
+        print()
         response = input("Are you sure? (y/N): ")
         if response.lower() not in ['y', 'yes']:
-            print("Password reset cancelled.")
+            print_warning("Password reset cancelled.")
             return
     
     try:
@@ -489,13 +493,19 @@ def handle_reset_password(args, config_file):
         new_password = auth.generate_password()
         auth.save_password(new_password)
         
-        print("✓ Web interface password has been reset successfully!")
-        print(f"New Password: {new_password}")
-        print("⚠  IMPORTANT: Save this password! It won't be shown again.")
-        print("You can now use this password to access the web interface.")
+        print()
+        print_success("Web interface password has been reset successfully!")
+        print()
+        print("=" * 50)
+        print(colored("NEW PASSWORD:", "white", "bold"))
+        print(colored(f"{new_password}", "green", "bold"))
+        print("=" * 50)
+        print()
+        print_warning("IMPORTANT: Save this password! It won't be shown again.")
+        print_success("You can now use this password to access the web interface.")
         
     except Exception as e:
-        print(f"Error resetting password: {e}")
+        print_error(f"Error resetting password: {e}")
 
 def handle_daemon(args, config_file, repo_dir):
     """Handle daemon commands."""

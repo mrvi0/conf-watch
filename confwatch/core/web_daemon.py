@@ -12,6 +12,8 @@ import argparse
 from pathlib import Path
 from typing import Optional
 
+from .colors import print_header, print_success, print_error, print_warning, colored
+
 
 class WebDaemonManager:
     """Manages the ConfWatch web daemon process."""
@@ -112,7 +114,8 @@ DEBUG={str(debug).lower()}
     def start(self, background: bool = True, host: str = None, port: int = None, debug: bool = None) -> bool:
         """Start the web daemon."""
         if self.is_running():
-            print(f"[WEB DAEMON] Already running (PID: {self.get_pid()})")
+            print_header("WEB DAEMON", "cyan")
+            print(f"Already running (PID: {self.get_pid()})")
             return False
         
         # Load existing config or use provided values
@@ -134,8 +137,9 @@ DEBUG={str(debug).lower()}
     
     def _start_foreground(self, config: dict) -> bool:
         """Start web daemon in foreground."""
-        print(f"[WEB DAEMON] Starting ConfWatch web server in foreground...")
-        print(f"[WEB DAEMON] Host: {config['host']}, Port: {config['port']}, Debug: {config['debug']}")
+        print_header("WEB DAEMON", "cyan")
+        print("Starting ConfWatch web server in foreground...")
+        print(f"Host: {config['host']}, Port: {config['port']}, Debug: {config['debug']}")
         
         # Write PID file
         with open(self.pid_file, 'w') as f:
@@ -151,8 +155,8 @@ DEBUG={str(debug).lower()}
             from confwatch.web.app import run_web_server
             self.running = True
             
-            print(f"[WEB DAEMON] Started successfully (PID: {os.getpid()})")
-            print(f"[WEB DAEMON] Web interface available at: http://{config['host']}:{config['port']}")
+            print_success(f"Started successfully (PID: {os.getpid()})")
+            print_success(f"Web interface available at: http://{config['host']}:{config['port']}")
             
             run_web_server(
                 host=config['host'],
@@ -163,26 +167,27 @@ DEBUG={str(debug).lower()}
             return True
             
         except Exception as e:
-            print(f"[WEB DAEMON] Failed to start: {e}")
+            print_error(f"Failed to start: {e}")
             self._cleanup()
             return False
     
     def _start_background(self, config: dict) -> bool:
         """Start web daemon in background."""
-        print("[WEB DAEMON] Starting ConfWatch web server in background...")
-        print(f"[WEB DAEMON] Host: {config['host']}, Port: {config['port']}, Debug: {config['debug']}")
+        print_header("WEB DAEMON", "cyan")
+        print("Starting ConfWatch web server in background...")
+        print(f"Host: {config['host']}, Port: {config['port']}, Debug: {config['debug']}")
         
         # Fork process
         try:
             pid = os.fork()
             if pid > 0:
                 # Parent process
-                print(f"[WEB DAEMON] Started successfully (PID: {pid})")
-                print(f"[WEB DAEMON] Web interface available at: http://{config['host']}:{config['port']}")
-                print(f"[WEB DAEMON] Logs: {self.log_file}")
+                print_success(f"Started successfully (PID: {pid})")
+                print_success(f"Web interface available at: http://{config['host']}:{config['port']}")
+                print_success(f"Logs: {self.log_file}")
                 return True
         except OSError as e:
-            print(f"[WEB DAEMON] Failed to fork: {e}")
+            print_error(f"Failed to fork: {e}")
             return False
         
         # Child process continues here
@@ -222,8 +227,8 @@ DEBUG={str(debug).lower()}
             from confwatch.web.app import run_web_server
             self.running = True
             
-            print(f"[WEB DAEMON] Background daemon started (PID: {os.getpid()})")
-            print(f"[WEB DAEMON] Web interface available at: http://{config['host']}:{config['port']}")
+            print_success(f"Background daemon started (PID: {os.getpid()})")
+            print_success(f"Web interface available at: http://{config['host']}:{config['port']}")
             
             run_web_server(
                 host=config['host'],
@@ -234,34 +239,37 @@ DEBUG={str(debug).lower()}
             return True
             
         except Exception as e:
-            print(f"[WEB DAEMON] Failed to start background daemon: {e}")
+            print_error(f"Failed to start background daemon: {e}")
             self._cleanup()
             sys.exit(1)
     
     def stop(self) -> bool:
         """Stop the web daemon."""
         if not self.is_running():
-            print("[WEB DAEMON] Not running")
+            print_header("WEB DAEMON", "cyan")
+            print("Not running")
             return False
         
         pid = self.get_pid()
         if pid is None:
-            print("[WEB DAEMON] Could not determine PID")
+            print_header("WEB DAEMON", "cyan")
+            print_error("Could not determine PID")
             return False
         
         try:
-            print(f"[WEB DAEMON] Stopping web daemon (PID: {pid})")
+            print_header("WEB DAEMON", "cyan")
+            print(f"Stopping web daemon (PID: {pid})")
             os.kill(pid, signal.SIGTERM)
             
             # Wait for process to stop
             for _ in range(10):  # Wait up to 10 seconds
                 if not self.is_running():
-                    print("[WEB DAEMON] Stopped successfully")
+                    print_success("Stopped successfully")
                     return True
                 time.sleep(1)
             
             # Force kill if still running
-            print("[WEB DAEMON] Force stopping web daemon")
+            print_warning("Force stopping web daemon")
             os.kill(pid, signal.SIGKILL)
             
             # Clean up pid file
@@ -271,12 +279,13 @@ DEBUG={str(debug).lower()}
             return True
             
         except OSError as e:
-            print(f"[WEB DAEMON] Failed to stop: {e}")
+            print_error(f"Failed to stop: {e}")
             return False
     
     def restart(self, host: str = None, port: int = None, debug: bool = None) -> bool:
         """Restart the web daemon."""
-        print("[WEB DAEMON] Restarting...")
+        print_header("WEB DAEMON", "cyan")
+        print("Restarting...")
         if self.is_running():
             if not self.stop():
                 return False
@@ -307,7 +316,8 @@ DEBUG={str(debug).lower()}
     
     def _signal_handler(self, signum, frame):
         """Handle termination signals."""
-        print(f"[WEB DAEMON] Received signal {signum}")
+        print_header("WEB DAEMON", "cyan")
+        print(f"Received signal {signum}")
         self.running = False
         self._cleanup()
         sys.exit(0)

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Optional
 
 from .watcher import FileWatcher
+from ..core.colors import print_header, print_success, print_error, print_warning, colored
 
 
 class DaemonManager:
@@ -64,7 +65,8 @@ class DaemonManager:
     def start(self, background: bool = True, use_watchdog: bool = True) -> bool:
         """Start the daemon."""
         if self.is_running():
-            print(f"[DAEMON] Already running (PID: {self.get_pid()})")
+            print_header("DAEMON", "magenta")
+            print(f"Already running (PID: {self.get_pid()})")
             return False
         
         if background:
@@ -74,7 +76,8 @@ class DaemonManager:
     
     def _start_foreground(self, use_watchdog: bool = True) -> bool:
         """Start daemon in foreground."""
-        print("[DAEMON] Starting ConfWatch daemon in foreground...")
+        print_header("DAEMON", "magenta")
+        print("Starting ConfWatch daemon in foreground...")
         
         # Write PID file
         with open(self.pid_file, 'w') as f:
@@ -91,35 +94,37 @@ class DaemonManager:
             self.watcher.start(use_watchdog=use_watchdog)
             self.running = True
             
-            print(f"[DAEMON] Started successfully (PID: {os.getpid()})")
+            print_success(f"Started successfully (PID: {os.getpid()})")
             
             # Keep daemon running
             try:
                 while self.running:
                     time.sleep(1)
             except KeyboardInterrupt:
-                print("\n[DAEMON] Received interrupt signal")
+                print_header("\nDAEMON", "magenta")
+                print("Received interrupt signal")
             
             return True
             
         except Exception as e:
-            print(f"[DAEMON] Failed to start: {e}")
+            print_error(f"Failed to start: {e}")
             self._cleanup()
             return False
     
     def _start_background(self, use_watchdog: bool = True) -> bool:
         """Start daemon in background."""
-        print("[DAEMON] Starting ConfWatch daemon in background...")
+        print_header("DAEMON", "magenta")
+        print("Starting ConfWatch daemon in background...")
         
         # Fork process
         try:
             pid = os.fork()
             if pid > 0:
                 # Parent process
-                print(f"[DAEMON] Started successfully (PID: {pid})")
+                print_success(f"Started successfully (PID: {pid})")
                 return True
         except OSError as e:
-            print(f"[DAEMON] Failed to fork: {e}")
+            print_error(f"Failed to fork: {e}")
             return False
         
         # Child process continues here
@@ -160,7 +165,7 @@ class DaemonManager:
             self.watcher.start(use_watchdog=use_watchdog)
             self.running = True
             
-            print(f"[DAEMON] Background daemon started (PID: {os.getpid()})")
+            print_success(f"Background daemon started (PID: {os.getpid()})")
             
             # Keep daemon running
             while self.running:
@@ -169,34 +174,37 @@ class DaemonManager:
             return True
             
         except Exception as e:
-            print(f"[DAEMON] Failed to start background daemon: {e}")
+            print_error(f"Failed to start background daemon: {e}")
             self._cleanup()
             sys.exit(1)
     
     def stop(self) -> bool:
         """Stop the daemon."""
         if not self.is_running():
-            print("[DAEMON] Not running")
+            print_header("DAEMON", "magenta")
+            print("Not running")
             return False
         
         pid = self.get_pid()
         if pid is None:
-            print("[DAEMON] Could not determine PID")
+            print_header("DAEMON", "magenta")
+            print_error("Could not determine PID")
             return False
         
         try:
-            print(f"[DAEMON] Stopping daemon (PID: {pid})")
+            print_header("DAEMON", "magenta")
+            print(f"Stopping daemon (PID: {pid})")
             os.kill(pid, signal.SIGTERM)
             
             # Wait for process to stop
             for _ in range(10):  # Wait up to 10 seconds
                 if not self.is_running():
-                    print("[DAEMON] Stopped successfully")
+                    print_success("Stopped successfully")
                     return True
                 time.sleep(1)
             
             # Force kill if still running
-            print("[DAEMON] Force stopping daemon")
+            print_warning("Force stopping daemon")
             os.kill(pid, signal.SIGKILL)
             
             # Clean up pid file
@@ -206,12 +214,13 @@ class DaemonManager:
             return True
             
         except OSError as e:
-            print(f"[DAEMON] Failed to stop: {e}")
+            print_error(f"Failed to stop: {e}")
             return False
     
     def restart(self, use_watchdog: bool = True) -> bool:
         """Restart the daemon."""
-        print("[DAEMON] Restarting...")
+        print_header("DAEMON", "magenta")
+        print("Restarting...")
         if self.is_running():
             if not self.stop():
                 return False
@@ -245,7 +254,8 @@ class DaemonManager:
     
     def _signal_handler(self, signum, frame):
         """Handle termination signals."""
-        print(f"[DAEMON] Received signal {signum}")
+        print_header("DAEMON", "magenta")
+        print(f"Received signal {signum}")
         self.running = False
         
         if self.watcher:
