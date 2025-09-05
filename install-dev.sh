@@ -10,6 +10,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+GRAY='\033[0;37m'
 NC='\033[0m' # No Color
 
 # Configuration
@@ -37,6 +38,49 @@ print_info() {
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
+}
+
+# Progress indicator with limited log output
+show_progress() {
+    local message="$1"
+    local command="$2"
+    local start_time=$(date +%s)
+    
+    echo -ne "${YELLOW}ℹ $message${NC}"
+    
+    # Create temporary files for output
+    local temp_log=$(mktemp)
+    local temp_err=$(mktemp)
+    
+    # Run command in background and capture output
+    if eval "$command" > "$temp_log" 2> "$temp_err"; then
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo -e "\r${GREEN}✓ $message (${duration}s)${NC}"
+        
+        # Show last 5 lines if there's output and it's substantial
+        if [[ -s "$temp_log" ]] && [[ $(wc -l < "$temp_log") -gt 5 ]]; then
+            echo -e "${GRAY}$(tail -n 5 "$temp_log")${NC}"
+        fi
+    else
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo -e "\r${RED}✗ $message (${duration}s)${NC}"
+        
+        # Show last 10 lines of error output
+        if [[ -s "$temp_err" ]]; then
+            echo -e "${RED}Error output:${NC}"
+            echo -e "${GRAY}$(tail -n 10 "$temp_err")${NC}"
+        fi
+        
+        # Clean up and exit
+        rm -f "$temp_log" "$temp_err"
+        return 1
+    fi
+    
+    # Clean up temp files
+    rm -f "$temp_log" "$temp_err"
+    return 0
 }
 
 # Check if Python 3 is available
@@ -131,7 +175,7 @@ create_venv() {
         rm -rf "$VENV_DIR"
     fi
     
-    $PYTHON_CMD -m venv "$VENV_DIR"
+    show_progress "Creating virtual environment..." "$PYTHON_CMD -m venv \"$VENV_DIR\""
     print_success "Virtual environment created at $VENV_DIR"
 }
 
@@ -143,10 +187,10 @@ install_dependencies() {
     source "$VENV_DIR/bin/activate"
     
     # Upgrade pip
-    pip install --upgrade pip
+    show_progress "Upgrading pip..." "pip install --upgrade pip"
     
     # Install requirements
-    pip install -r requirements.txt
+    show_progress "Installing Python dependencies..." "pip install -r requirements.txt"
     
     print_success "Dependencies installed successfully"
 }

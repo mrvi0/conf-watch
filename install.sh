@@ -10,6 +10,7 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
+GRAY='\033[0;37m'
 NC='\033[0m' # No Color
 
 # Configuration
@@ -38,6 +39,49 @@ print_info() {
 
 print_error() {
     echo -e "${RED}✗ $1${NC}"
+}
+
+# Progress indicator with limited log output
+show_progress() {
+    local message="$1"
+    local command="$2"
+    local start_time=$(date +%s)
+    
+    echo -ne "${YELLOW}ℹ $message${NC}"
+    
+    # Create temporary files for output
+    local temp_log=$(mktemp)
+    local temp_err=$(mktemp)
+    
+    # Run command in background and capture output
+    if eval "$command" > "$temp_log" 2> "$temp_err"; then
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo -e "\r${GREEN}✓ $message (${duration}s)${NC}"
+        
+        # Show last 5 lines if there's output and it's substantial
+        if [[ -s "$temp_log" ]] && [[ $(wc -l < "$temp_log") -gt 5 ]]; then
+            echo -e "${GRAY}$(tail -n 5 "$temp_log")${NC}"
+        fi
+    else
+        local end_time=$(date +%s)
+        local duration=$((end_time - start_time))
+        echo -e "\r${RED}✗ $message (${duration}s)${NC}"
+        
+        # Show last 10 lines of error output
+        if [[ -s "$temp_err" ]]; then
+            echo -e "${RED}Error output:${NC}"
+            echo -e "${GRAY}$(tail -n 10 "$temp_err")${NC}"
+        fi
+        
+        # Clean up and exit
+        rm -f "$temp_log" "$temp_err"
+        return 1
+    fi
+    
+    # Clean up temp files
+    rm -f "$temp_log" "$temp_err"
+    return 0
 }
 
 # Check if Python 3 is available
@@ -70,27 +114,28 @@ check_pip() {
         if command -v apt-get &> /dev/null; then
             # Debian/Ubuntu
             print_info "Installing pip using apt-get..."
-            apt-get update -qq && apt-get install -y python3-pip python3-venv
+            show_progress "Updating package lists..." "apt-get update -qq"
+            show_progress "Installing python3-pip and python3-venv..." "apt-get install -y python3-pip python3-venv"
         elif command -v yum &> /dev/null; then
             # CentOS/RHEL
             print_info "Installing pip using yum..."
-            yum install -y python3-pip python3-venv
+            show_progress "Installing python3-pip and python3-venv..." "yum install -y python3-pip python3-venv"
         elif command -v dnf &> /dev/null; then
             # Fedora
             print_info "Installing pip using dnf..."
-            dnf install -y python3-pip python3-venv
+            show_progress "Installing python3-pip and python3-venv..." "dnf install -y python3-pip python3-venv"
         elif command -v pacman &> /dev/null; then
             # Arch Linux
             print_info "Installing pip using pacman..."
-            pacman -S --noconfirm python-pip
+            show_progress "Installing python-pip..." "pacman -S --noconfirm python-pip"
         elif command -v zypper &> /dev/null; then
             # openSUSE
             print_info "Installing pip using zypper..."
-            zypper install -y python3-pip python3-venv
+            show_progress "Installing python3-pip and python3-venv..." "zypper install -y python3-pip python3-venv"
         elif command -v apk &> /dev/null; then
             # Alpine Linux
             print_info "Installing pip using apk..."
-            apk add --no-cache python3-dev py3-pip py3-virtualenv
+            show_progress "Installing python3-dev, py3-pip and py3-virtualenv..." "apk add --no-cache python3-dev py3-pip py3-virtualenv"
         else
             # Try get-pip.py as fallback
             print_info "Trying to install pip using get-pip.py..."
@@ -134,27 +179,28 @@ check_git() {
         if command -v apt-get &> /dev/null; then
             # Debian/Ubuntu
             print_info "Installing git using apt-get..."
-            apt-get update -qq && apt-get install -y git
+            show_progress "Updating package lists..." "apt-get update -qq"
+            show_progress "Installing git..." "apt-get install -y git"
         elif command -v yum &> /dev/null; then
             # CentOS/RHEL
             print_info "Installing git using yum..."
-            yum install -y git
+            show_progress "Installing git..." "yum install -y git"
         elif command -v dnf &> /dev/null; then
             # Fedora
             print_info "Installing git using dnf..."
-            dnf install -y git
+            show_progress "Installing git..." "dnf install -y git"
         elif command -v pacman &> /dev/null; then
             # Arch Linux
             print_info "Installing git using pacman..."
-            pacman -S --noconfirm git
+            show_progress "Installing git..." "pacman -S --noconfirm git"
         elif command -v zypper &> /dev/null; then
             # openSUSE
             print_info "Installing git using zypper..."
-            zypper install -y git
+            show_progress "Installing git..." "zypper install -y git"
         elif command -v apk &> /dev/null; then
             # Alpine Linux
             print_info "Installing git using apk..."
-            apk add --no-cache git
+            show_progress "Installing git..." "apk add --no-cache git"
         else
             print_error "Could not install git automatically."
             print_info "Please install git manually and try again:"
@@ -216,7 +262,7 @@ create_venv() {
         rm -rf "$VENV_DIR"
     fi
     
-    $PYTHON_CMD -m venv "$VENV_DIR"
+    show_progress "Creating virtual environment..." "$PYTHON_CMD -m venv \"$VENV_DIR\""
     print_success "Virtual environment created at $VENV_DIR"
 }
 
@@ -228,10 +274,10 @@ install_dependencies() {
     source "$VENV_DIR/bin/activate"
     
     # Upgrade pip
-    pip install --upgrade pip
+    show_progress "Upgrading pip..." "pip install --upgrade pip"
     
     # Install requirements
-    pip install -r "$TEMP_DIR/requirements.txt"
+    show_progress "Installing Python dependencies..." "pip install -r \"$TEMP_DIR/requirements.txt\""
     
     print_success "Dependencies installed successfully"
 }
