@@ -39,6 +39,8 @@ Examples:
   confwatch web-daemon start --port 9000
   confwatch web-daemon stop
   confwatch web-daemon status
+  confwatch completion bash --install
+  confwatch completion zsh --install
   confwatch update
   confwatch update --force
   confwatch reset-password
@@ -144,6 +146,12 @@ Examples:
     web_daemon_config_parser.add_argument('--port', type=int, default=8080, help='Port to bind to (default: 8080)')
     web_daemon_config_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     
+    # Completion command
+    completion_parser = subparsers.add_parser('completion', help='Install shell completion')
+    completion_parser.add_argument('shell', nargs='?', choices=['bash', 'zsh'], help='Shell type (bash or zsh)')
+    completion_parser.add_argument('--install', action='store_true', help='Install completion automatically')
+    completion_parser.add_argument('--output', help='Output directory for completion files')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -185,6 +193,8 @@ Examples:
             handle_update(args, config_file)
         elif args.command == 'web-daemon':
             handle_web_daemon(args, config_file)
+        elif args.command == 'completion':
+            handle_completion(args)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -618,6 +628,118 @@ def handle_web_daemon(args, config_file):
         print(f"Host: {args.host}")
         print(f"Port: {args.port}")
         print(f"Debug: {args.debug}")
+
+def handle_completion(args):
+    """Handle completion command."""
+    import tempfile
+    import shutil
+    from confwatch.core.completion import CompletionGenerator
+    
+    generator = CompletionGenerator()
+    
+    # Determine shell
+    if args.shell:
+        shell = args.shell
+    else:
+        # Auto-detect shell
+        import os
+        shell_env = os.environ.get('SHELL', '/bin/bash')
+        if 'zsh' in shell_env:
+            shell = 'zsh'
+        else:
+            shell = 'bash'
+        print(f"Auto-detected shell: {shell}")
+    
+    # Determine output directory
+    if args.output:
+        output_dir = args.output
+    else:
+        output_dir = tempfile.mkdtemp()
+    
+    # Generate completion scripts
+    bash_file, zsh_file = generator.save_completion_scripts(output_dir)
+    
+    if args.install:
+        # Install completion automatically
+        install_success = False
+        
+        if shell == 'bash':
+            # Try to install bash completion
+            bash_completion_dirs = [
+                '/usr/share/bash-completion/completions',
+                '/usr/local/share/bash-completion/completions',
+                os.path.expanduser('~/.local/share/bash-completion/completions'),
+                os.path.expanduser('~/.bash_completion.d')
+            ]
+            
+            for completion_dir in bash_completion_dirs:
+                try:
+                    if os.path.exists(os.path.dirname(completion_dir)):
+                        os.makedirs(completion_dir, exist_ok=True)
+                        target_file = os.path.join(completion_dir, 'confwatch')
+                        shutil.copy2(bash_file, target_file)
+                        print(f"✅ Bash completion installed to: {target_file}")
+                        print("Restart your shell or run: source ~/.bashrc")
+                        install_success = True
+                        break
+                except (OSError, PermissionError):
+                    continue
+            
+            if not install_success:
+                print("❌ Could not install bash completion automatically.")
+                print("Manual installation:")
+                print(f"  sudo cp {bash_file} /usr/share/bash-completion/completions/confwatch")
+                print("  # or")
+                print(f"  mkdir -p ~/.bash_completion.d && cp {bash_file} ~/.bash_completion.d/confwatch")
+        
+        elif shell == 'zsh':
+            # Try to install zsh completion
+            zsh_completion_dirs = [
+                '/usr/share/zsh/site-functions',
+                '/usr/local/share/zsh/site-functions',
+                os.path.expanduser('~/.local/share/zsh/site-functions')
+            ]
+            
+            # Also check FPATH
+            fpath = os.environ.get('FPATH', '').split(':')
+            for path in fpath:
+                if path and os.path.exists(path):
+                    zsh_completion_dirs.append(path)
+            
+            for completion_dir in zsh_completion_dirs:
+                try:
+                    if os.path.exists(os.path.dirname(completion_dir)):
+                        os.makedirs(completion_dir, exist_ok=True)
+                        target_file = os.path.join(completion_dir, '_confwatch')
+                        shutil.copy2(zsh_file, target_file)
+                        print(f"✅ Zsh completion installed to: {target_file}")
+                        print("Restart your shell or run: compinit")
+                        install_success = True
+                        break
+                except (OSError, PermissionError):
+                    continue
+            
+            if not install_success:
+                print("❌ Could not install zsh completion automatically.")
+                print("Manual installation:")
+                print(f"  sudo cp {zsh_file} /usr/share/zsh/site-functions/_confwatch")
+                print("  # or add to your ~/.zshrc:")
+                print(f"  fpath=(~/.local/share/zsh/site-functions $fpath)")
+                print(f"  mkdir -p ~/.local/share/zsh/site-functions && cp {zsh_file} ~/.local/share/zsh/site-functions/_confwatch")
+    
+    else:
+        # Just show the files
+        print("Completion files generated:")
+        print(f"  Bash: {bash_file}")
+        print(f"  Zsh:  {zsh_file}")
+        print("")
+        print("To install manually:")
+        print("  Bash:")
+        print(f"    sudo cp {bash_file} /usr/share/bash-completion/completions/confwatch")
+        print("  Zsh:")
+        print(f"    sudo cp {zsh_file} /usr/share/zsh/site-functions/_confwatch")
+        print("")
+        print("Or run with --install flag to install automatically")
 
 if __name__ == '__main__':
     main() 

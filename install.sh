@@ -469,6 +469,15 @@ main() {
     cleanup
     
     print_success "Installation completed successfully!"
+    
+    # Install shell completion
+    print_info "Installing shell completion..."
+    if "$CONFWATCH_HOME/confwatch" completion --install > /dev/null 2>&1; then
+        print_success "Shell completion installed"
+    else
+        print_info "Shell completion installation skipped (manual setup available)"
+    fi
+    
     echo ""
     echo -e "${GREEN}ConfWatch has been installed successfully!${NC}"
     echo -e "${YELLOW}Location:${NC} $CONFWATCH_HOME"
