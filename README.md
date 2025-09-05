@@ -109,6 +109,7 @@ confwatch web-daemon status       # Show web daemon status
 confwatch daemon start            # Start automatic file monitoring
 confwatch daemon stop             # Stop automatic file monitoring
 confwatch daemon status           # Show daemon status
+confwatch completion --install    # Install shell autocompletion
 confwatch reset-password          # Reset web interface password
 confwatch update                  # Update ConfWatch to latest version
 confwatch --help                  # Show all commands
@@ -128,6 +129,8 @@ confwatch web-daemon config --port 9000 # Configure web daemon
 confwatch daemon start --foreground     # Start monitoring in foreground
 confwatch daemon start --polling        # Use polling instead of watchdog
 confwatch daemon restart
+confwatch completion bash --install     # Install bash completion
+confwatch completion zsh --install      # Install zsh completion
 confwatch update --force                # Force update without confirmation
 confwatch reset-password --force
 ```
@@ -179,6 +182,44 @@ confwatch web-daemon restart     # Restart with saved config
 ### Difference from regular web command
 - **`confwatch web`** - one-time server with command-line parameters
 - **`confwatch web-daemon`** - persistent daemon with saved configuration
+
+---
+
+## Shell Autocompletion
+
+ConfWatch supports intelligent autocompletion for bash and zsh shells:
+
+### Automatic Installation
+Autocompletion is installed automatically during ConfWatch setup. If you need to reinstall or install manually:
+
+```bash
+confwatch completion --install          # Auto-detect shell and install
+confwatch completion bash --install     # Install for bash
+confwatch completion zsh --install      # Install for zsh
+```
+
+### Features
+- **Command completion** - `confwatch <TAB>` shows all available commands
+- **Subcommand completion** - `confwatch web-daemon <TAB>` shows start, stop, restart, etc.
+- **Option completion** - `confwatch daemon start --<TAB>` shows available flags
+- **File path completion** - `confwatch snapshot <TAB>` completes file paths
+- **Context-aware** - different options for different commands and subcommands
+
+### Manual Setup
+If automatic installation fails, you can install manually:
+
+```bash
+# Generate completion files
+confwatch completion --output /tmp/completion
+
+# Install manually
+sudo cp /tmp/completion/confwatch-completion.bash /usr/share/bash-completion/completions/confwatch
+sudo cp /tmp/completion/_confwatch /usr/share/zsh/site-functions/_confwatch
+```
+
+After installation, restart your shell or run:
+- **Bash**: `source ~/.bashrc`
+- **Zsh**: `compinit`
 
 ---
 
@@ -298,6 +339,9 @@ A: Run `confwatch update` to automatically update to the latest version. Your co
 
 **Q: What's the difference between web and web-daemon?**
 A: `confwatch web` starts a one-time server, while `confwatch web-daemon` runs a persistent daemon that remembers its configuration and can be managed like a system service.
+
+**Q: How do I enable autocompletion?**
+A: Autocompletion is installed automatically. If it's not working, run `confwatch completion --install` and restart your shell.
 
 **Q: How do I develop or contribute?**
 A: See [Development](#development) below.
