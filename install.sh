@@ -183,8 +183,21 @@ download_project() {
     rm -rf "$TEMP_DIR"
     mkdir -p "$TEMP_DIR"
     
-    # Clone repository
-    git clone https://github.com/vi/conf-watch.git "$TEMP_DIR" > /dev/null 2>&1
+    # Clone repository without authentication prompts
+    if ! GIT_TERMINAL_PROMPT=0 git clone https://github.com/mrvi0/conf-watch.git "$TEMP_DIR" > /dev/null 2>&1; then
+        # Try with curl/wget fallback if git clone fails
+        print_info "Git clone failed, trying direct download..."
+        if command -v curl &> /dev/null; then
+            curl -fsSL https://github.com/mrvi0/conf-watch/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+        elif command -v wget &> /dev/null; then
+            wget -qO- https://github.com/mrvi0/conf-watch/archive/refs/heads/main.tar.gz | tar -xz -C "$TEMP_DIR" --strip-components=1
+        else
+            print_error "Failed to download ConfWatch from GitHub."
+            print_info "Please check your internet connection and try again."
+            print_info "Or install git, curl, or wget and try again."
+            exit 1
+        fi
+    fi
     
     if [[ ! -d "$TEMP_DIR/confwatch" ]]; then
         print_error "Failed to download ConfWatch project"
