@@ -102,11 +102,15 @@ confwatch diff <file>             # Show diff (latest vs previous)
 confwatch history <file>          # Show file history (with commit hashes)
 confwatch tag <file> <tag>        # Tag current version
 confwatch rollback <file> <ver>   # Rollback to specific version
-confwatch web [options]           # Start web interface
+confwatch web [options]           # Start web interface (one-time)
+confwatch web-daemon start        # Start persistent web server daemon
+confwatch web-daemon stop         # Stop persistent web server daemon
+confwatch web-daemon status       # Show web daemon status
 confwatch daemon start            # Start automatic file monitoring
 confwatch daemon stop             # Stop automatic file monitoring
 confwatch daemon status           # Show daemon status
 confwatch reset-password          # Reset web interface password
+confwatch update                  # Update ConfWatch to latest version
 confwatch --help                  # Show all commands
 ```
 
@@ -118,10 +122,13 @@ confwatch diff ~/.env
 confwatch history /etc/nginx/nginx.conf
 confwatch tag ~/.bashrc "after-nvm-install"
 confwatch rollback ~/.bashrc abc1234
-confwatch web --port 9000
-confwatch daemon start --foreground    # Start monitoring in foreground
-confwatch daemon start --polling       # Use polling instead of watchdog
+confwatch web --port 9000                # One-time web server
+confwatch web-daemon start --port 8080  # Persistent web daemon
+confwatch web-daemon config --port 9000 # Configure web daemon
+confwatch daemon start --foreground     # Start monitoring in foreground
+confwatch daemon start --polling        # Use polling instead of watchdog
 confwatch daemon restart
+confwatch update --force                # Force update without confirmation
 confwatch reset-password --force
 ```
 
@@ -142,6 +149,36 @@ confwatch reset-password --force
 **[SCREENSHOT PLACEHOLDER: Main web interface with file list, status, and animated CLI demo]**
 **[SCREENSHOT PLACEHOLDER: File history view with custom checkboxes and [SHOW DIFF] button]**
 **[SCREENSHOT PLACEHOLDER: Diff view between two arbitrary snapshots]**
+
+---
+
+## Persistent Web Daemon
+
+For production use, you can run a persistent web server daemon that starts automatically and remembers its configuration:
+
+### Setup and Start
+```bash
+confwatch web-daemon config --host 0.0.0.0 --port 8080  # Configure settings
+confwatch web-daemon start                              # Start in background
+```
+
+### Management
+```bash
+confwatch web-daemon status      # Check if running
+confwatch web-daemon stop        # Stop daemon  
+confwatch web-daemon restart     # Restart with saved config
+```
+
+### Features
+- **Configuration persistence** - settings saved in `~/.confwatch/web_daemon.conf`
+- **Background operation** - runs as daemon with PID file management
+- **Automatic restart** - remembers host, port, debug settings
+- **Logging** - output goes to `~/.confwatch/web_daemon.log`
+- **Process management** - proper start/stop/restart with PID tracking
+
+### Difference from regular web command
+- **`confwatch web`** - one-time server with command-line parameters
+- **`confwatch web-daemon`** - persistent daemon with saved configuration
 
 ---
 
@@ -255,6 +292,12 @@ A: Run `confwatch daemon start` to monitor files. It uses watchdog (inotify) for
 
 **Q: Can I access the web interface from another computer?**
 A: Yes! The web server binds to `0.0.0.0:8080` by default, making it accessible from any IP. Just make sure your firewall allows the port.
+
+**Q: How do I update ConfWatch?**
+A: Run `confwatch update` to automatically update to the latest version. Your configuration and file history are preserved during updates.
+
+**Q: What's the difference between web and web-daemon?**
+A: `confwatch web` starts a one-time server, while `confwatch web-daemon` runs a persistent daemon that remembers its configuration and can be managed like a system service.
 
 **Q: How do I develop or contribute?**
 A: See [Development](#development) below.
