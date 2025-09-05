@@ -33,6 +33,9 @@ Examples:
   confwatch rollback ~/.bashrc abc1234
   confwatch web
   confwatch web --port 9000
+  confwatch daemon start
+  confwatch daemon stop
+  confwatch daemon status
   confwatch reset-password
   confwatch reset-password --force
   confwatch uninstall
@@ -83,6 +86,25 @@ Examples:
     reset_password_parser = subparsers.add_parser('reset-password', help='Reset web interface password')
     reset_password_parser.add_argument('--force', '-f', action='store_true', help='Force reset without confirmation')
     
+    # Daemon commands
+    daemon_parser = subparsers.add_parser('daemon', help='Manage file monitoring daemon')
+    daemon_subparsers = daemon_parser.add_subparsers(dest='daemon_action', help='Daemon actions')
+    
+    # Daemon start
+    daemon_start_parser = daemon_subparsers.add_parser('start', help='Start file monitoring daemon')
+    daemon_start_parser.add_argument('--foreground', '-f', action='store_true', help='Run in foreground')
+    daemon_start_parser.add_argument('--polling', '-p', action='store_true', help='Use polling instead of watchdog')
+    
+    # Daemon stop
+    daemon_stop_parser = daemon_subparsers.add_parser('stop', help='Stop file monitoring daemon')
+    
+    # Daemon restart
+    daemon_restart_parser = daemon_subparsers.add_parser('restart', help='Restart file monitoring daemon')
+    daemon_restart_parser.add_argument('--polling', '-p', action='store_true', help='Use polling instead of watchdog')
+    
+    # Daemon status
+    daemon_status_parser = daemon_subparsers.add_parser('status', help='Show daemon status')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -118,6 +140,8 @@ Examples:
             handle_uninstall(args)
         elif args.command == 'reset-password':
             handle_reset_password(args, config_file)
+        elif args.command == 'daemon':
+            handle_daemon(args, config_file, repo_dir)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -419,6 +443,64 @@ def handle_reset_password(args, config_file):
         
     except Exception as e:
         print(f"Error resetting password: {e}")
+
+def handle_daemon(args, config_file, repo_dir):
+    """Handle daemon commands."""
+    from confwatch.daemon.daemon import DaemonManager
+    
+    daemon = DaemonManager(config_file, repo_dir)
+    
+    if not args.daemon_action:
+        print("Error: No daemon action specified. Use 'start', 'stop', 'restart', or 'status'")
+        return
+    
+    if args.daemon_action == 'start':
+        use_watchdog = not args.polling
+        background = not args.foreground
+        
+        if daemon.start(background=background, use_watchdog=use_watchdog):
+            if background:
+                print("✓ Daemon started successfully in background")
+            else:
+                print("✓ Daemon started in foreground")
+        else:
+            print("✗ Failed to start daemon")
+            sys.exit(1)
+    
+    elif args.daemon_action == 'stop':
+        if daemon.stop():
+            print("✓ Daemon stopped successfully")
+        else:
+            print("✗ Failed to stop daemon")
+            sys.exit(1)
+    
+    elif args.daemon_action == 'restart':
+        use_watchdog = not args.polling
+        if daemon.restart(use_watchdog=use_watchdog):
+            print("✓ Daemon restarted successfully")
+        else:
+            print("✗ Failed to restart daemon")
+            sys.exit(1)
+    
+    elif args.daemon_action == 'status':
+        status = daemon.status()
+        
+        print("Daemon Status:")
+        print("=" * 30)
+        print(f"Running: {'Yes' if status['running'] else 'No'}")
+        
+        if status['running']:
+            print(f"PID: {status['pid']}")
+            print(f"Mode: {status.get('mode', 'unknown')}")
+            print(f"Monitored files: {status.get('monitored_files', 0)}")
+            print(f"Pending snapshots: {status.get('pending_snapshots', 0)}")
+            print(f"Watchdog available: {'Yes' if status.get('watchdog_available', False) else 'No'}")
+        
+        print(f"PID file: {status['pid_file']}")
+        print(f"Log file: {status['log_file']}")
+        
+        if 'watcher_error' in status:
+            print(f"Watcher error: {status['watcher_error']}")
 
 if __name__ == '__main__':
     main() 
