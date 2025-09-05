@@ -71,7 +71,7 @@ Examples:
     
     # Web command
     web_parser = subparsers.add_parser('web', help='Start web interface')
-    web_parser.add_argument('--host', default='localhost', help='Host to bind to (default: localhost)')
+    web_parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
     web_parser.add_argument('--port', type=int, default=8080, help='Port to bind to (default: 8080)')
     web_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     

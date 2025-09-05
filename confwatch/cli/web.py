@@ -14,7 +14,7 @@ from web.app import run_web_server
 
 def main():
     parser = argparse.ArgumentParser(description='Start ConfWatch web server')
-    parser.add_argument('--host', default='localhost', help='Host to bind to (default: localhost)')
+    parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
     parser.add_argument('--port', type=int, default=5000, help='Port to bind to (default: 5000)')
     parser.add_argument('--debug', action='store_true', help='Enable debug mode')
     

@@ -252,7 +252,7 @@ def main():
     os.chdir(WEB_DIR)
     
     with socketserver.TCPServer(("", port), ConfWatchHandler) as httpd:
-        print(f"Server running at http://localhost:{port}")
+        print(f"Server running at http://0.0.0.0:{port}")
         print("Press Ctrl+C to stop")
         try:
             httpd.serve_forever()
@@ -267,7 +267,7 @@ EOF
 # Start HTTP server
 start_server() {
     log_info "Starting ConfWatch Python web server on port $PORT"
-    echo -e "${GREEN}Web interface available at: http://localhost:$PORT${NC}"
+    echo -e "${GREEN}Web interface available at: http://0.0.0.0:$PORT${NC}"
     echo -e "${YELLOW}Press Ctrl+C to stop the server${NC}"
     
     # Create Python server

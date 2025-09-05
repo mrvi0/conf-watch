@@ -315,7 +315,7 @@ def get_diff_between():
 def api_version():
     return jsonify({"version": confwatch.__version__})
 
-def run_web_server(host='localhost', port=5000, debug=False):
+def run_web_server(host='0.0.0.0', port=5000, debug=False):
     """Run the web server."""
     print(f"Starting ConfWatch web server on http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
