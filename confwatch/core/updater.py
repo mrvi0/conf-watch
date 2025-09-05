@@ -1,6 +1,6 @@
 """
 ConfWatch updater module.
-Handles automatic updates from GitHub.
+Handles automatic updates from GitHub using backup-reinstall-restore approach.
 """
 
 import os
@@ -12,16 +12,21 @@ from pathlib import Path
 
 
 class ConfWatchUpdater:
-    """Handles ConfWatch updates."""
+    """Handles ConfWatch updates using backup-reinstall-restore approach."""
     
     def __init__(self, config_file: str):
         self.config_file = config_file
         self.confwatch_home = os.path.dirname(os.path.dirname(config_file))
-        self.confwatch_module_dir = os.path.join(self.confwatch_home, "confwatch-module")
-        self.web_dir = os.path.join(self.confwatch_home, "web")
-        self.venv_dir = os.path.join(self.confwatch_home, "venv")
-        self.launcher_file = os.path.join(self.confwatch_home, "confwatch")
+        self.config_dir = os.path.join(self.confwatch_home, "config")
         self.repo_dir = os.path.join(self.confwatch_home, "repo")
+        self.web_dir = os.path.join(self.confwatch_home, "web")
+        
+        # Directories that contain user data and should be preserved
+        self.user_data_dirs = [
+            ("config", self.config_dir),
+            ("repo", self.repo_dir),
+            ("web", self.web_dir)  # Contains auth.yml
+        ]
     
     def get_current_version(self) -> str:
         """Get current ConfWatch version."""
@@ -45,11 +50,129 @@ class ConfWatchUpdater:
             print(f"Warning: Could not check daemon status: {e}")
             return False
     
+    def backup_user_data(self, backup_dir: str) -> bool:
+        """Backup user data to temporary directory."""
+        print("💾 Backing up user data...")
+        
+        try:
+            os.makedirs(backup_dir, exist_ok=True)
+            
+            for name, source_dir in self.user_data_dirs:
+                if os.path.exists(source_dir):
+                    target_dir = os.path.join(backup_dir, name)
+                    print(f"  📁 Backing up {name}...")
+                    shutil.copytree(source_dir, target_dir)
+                    
+                    # Count items for user info
+                    if name == "repo" and os.path.exists(os.path.join(source_dir, ".git")):
+                        try:
+                            result = subprocess.run([
+                                "git", "-C", source_dir, "log", "--oneline"
+                            ], capture_output=True, text=True)
+                            if result.returncode == 0:
+                                snapshot_count = len(result.stdout.strip().split('\n')) if result.stdout.strip() else 0
+                                print(f"    ✅ {snapshot_count} snapshots backed up")
+                        except:
+                            pass
+                else:
+                    print(f"  ⚠️  {name} directory not found, skipping...")
+            
+            print("✅ User data backed up successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to backup user data: {e}")
+            return False
+    
+    def restore_user_data(self, backup_dir: str) -> bool:
+        """Restore user data from temporary directory."""
+        print("📥 Restoring user data...")
+        
+        try:
+            for name, target_dir in self.user_data_dirs:
+                source_dir = os.path.join(backup_dir, name)
+                if os.path.exists(source_dir):
+                    print(f"  📁 Restoring {name}...")
+                    
+                    # Remove existing directory if present
+                    if os.path.exists(target_dir):
+                        shutil.rmtree(target_dir)
+                    
+                    # Copy back from backup
+                    shutil.copytree(source_dir, target_dir)
+                else:
+                    print(f"  ⚠️  {name} backup not found, skipping...")
+            
+            print("✅ User data restored successfully")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Failed to restore user data: {e}")
+            return False
+    
+    def run_fresh_installation(self, branch: str = "main") -> bool:
+        """Run fresh installation script."""
+        print("🔄 Running fresh installation...")
+        
+        # Remove existing installation (but user data is already backed up)
+        if os.path.exists(self.confwatch_home):
+            print("  🗑️  Removing old installation...")
+            shutil.rmtree(self.confwatch_home)
+        
+        # Download and run install script
+        install_script_url = f"https://raw.githubusercontent.com/mrvi0/conf-watch/{branch}/install.sh"
+        
+        try:
+            # Download install script
+            result = subprocess.run([
+                "curl", "-fsSL", install_script_url
+            ], capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                # Try wget as fallback
+                result = subprocess.run([
+                    "wget", "-q", "-O", "-", install_script_url
+                ], capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    print("❌ Could not download install script")
+                    return False
+            
+            install_script = result.stdout
+            
+            # Run install script
+            env = os.environ.copy()
+            env['CONFWATCH_UPDATE_MODE'] = '1'  # Signal to install script that this is an update
+            
+            process = subprocess.Popen([
+                "bash", "-c", install_script
+            ], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            
+            # Show installation progress
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    print(f"  {output.strip()}")
+            
+            if process.returncode == 0:
+                print("✅ Fresh installation completed")
+                return True
+            else:
+                print("❌ Fresh installation failed")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Installation failed: {e}")
+            return False
+    
     def restart_daemon(self):
         """Restart daemon if it was running."""
         try:
             from confwatch.daemon.daemon import DaemonManager
             daemon = DaemonManager(self.config_file, self.repo_dir)
+            print("🔄 Restarting daemon...")
             if daemon.start():
                 print("✅ Daemon restarted successfully")
             else:
@@ -57,175 +180,8 @@ class ConfWatchUpdater:
         except Exception as e:
             print(f"⚠️  Warning: Could not restart daemon: {e}")
     
-    def download_update(self, temp_dir: str, branch: str = "main") -> bool:
-        """Download latest version from GitHub."""
-        download_url = f"https://github.com/mrvi0/conf-watch/archive/refs/heads/{branch}.tar.gz"
-        archive_path = os.path.join(temp_dir, "update.tar.gz")
-        
-        if shutil.which("curl"):
-            result = subprocess.run([
-                "curl", "-fsSL", download_url, "-o", archive_path
-            ], capture_output=True, text=True)
-        elif shutil.which("wget"):
-            result = subprocess.run([
-                "wget", "-q", download_url, "-O", archive_path
-            ], capture_output=True, text=True)
-        else:
-            print("❌ Error: curl or wget required for update")
-            return False
-        
-        if result.returncode != 0:
-            print(f"❌ Error downloading update: {result.stderr}")
-            return False
-        
-        return True
-    
-    def extract_update(self, temp_dir: str) -> bool:
-        """Extract downloaded archive."""
-        archive_path = os.path.join(temp_dir, "update.tar.gz")
-        
-        result = subprocess.run([
-            "tar", "-xzf", archive_path,
-            "-C", temp_dir, "--strip-components=1"
-        ], capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            print(f"❌ Error extracting update: {result.stderr}")
-            return False
-        
-        return True
-    
-    def backup_current_installation(self) -> tuple:
-        """Create backups of current installation.
-        
-        NOTE: This only backs up code/executable files that will be replaced.
-        User data is NEVER touched during updates:
-        - ~/.confwatch/config/ (configuration files)
-        - ~/.confwatch/repo/ (file history and snapshots)
-        - ~/.confwatch/venv/ (virtual environment, only packages updated)
-        """
-        # Backup Python module (backup the confwatch subdirectory)
-        confwatch_module_path = os.path.join(self.confwatch_module_dir, "confwatch")
-        module_backup_dir = confwatch_module_path + ".backup"
-        if os.path.exists(module_backup_dir):
-            shutil.rmtree(module_backup_dir)
-        
-        if os.path.exists(confwatch_module_path):
-            shutil.move(confwatch_module_path, module_backup_dir)
-        
-        # Backup web files
-        web_backup_dir = self.web_dir + ".backup"
-        if os.path.exists(web_backup_dir):
-            shutil.rmtree(web_backup_dir)
-        
-        if os.path.exists(self.web_dir):
-            shutil.move(self.web_dir, web_backup_dir)
-        
-        return module_backup_dir, web_backup_dir
-    
-    def restore_backups(self, module_backup_dir: str, web_backup_dir: str):
-        """Restore backups on update failure."""
-        print("🔄 Restoring backup...")
-        
-        # Restore module (restore to confwatch-module/confwatch)
-        if os.path.exists(module_backup_dir):
-            confwatch_module_path = os.path.join(self.confwatch_module_dir, "confwatch")
-            if os.path.exists(confwatch_module_path):
-                shutil.rmtree(confwatch_module_path)
-            shutil.move(module_backup_dir, confwatch_module_path)
-        
-        # Restore web files
-        if os.path.exists(web_backup_dir):
-            if os.path.exists(self.web_dir):
-                shutil.rmtree(self.web_dir)
-            shutil.move(web_backup_dir, self.web_dir)
-    
-    def update_python_module(self, temp_dir: str):
-        """Update Python module."""
-        new_module_dir = os.path.join(temp_dir, "confwatch")
-        target_module_dir = os.path.join(self.confwatch_module_dir, "confwatch")
-        
-        # Create confwatch-module directory if it doesn't exist
-        os.makedirs(self.confwatch_module_dir, exist_ok=True)
-        
-        # Remove existing module if present
-        if os.path.exists(target_module_dir):
-            shutil.rmtree(target_module_dir)
-        
-        # Copy the confwatch module to confwatch-module/confwatch
-        shutil.copytree(new_module_dir, target_module_dir)
-    
-    def update_web_interface(self, temp_dir: str):
-        """Update web interface files."""
-        new_web_dir = os.path.join(temp_dir, "confwatch", "web", "static")
-        
-        if os.path.exists(new_web_dir):
-            shutil.copytree(new_web_dir, self.web_dir)
-    
-    def update_dependencies(self, temp_dir: str):
-        """Update Python dependencies."""
-        requirements_file = os.path.join(temp_dir, "requirements.txt")
-        if not os.path.exists(requirements_file):
-            return
-        
-        pip_cmd = os.path.join(self.venv_dir, "bin", "pip")
-        if not os.path.exists(pip_cmd):
-            print("⚠️  Warning: pip not found in virtual environment")
-            return
-        
-        result = subprocess.run([
-            pip_cmd, "install", "--upgrade", "-r", requirements_file
-        ], capture_output=True, text=True)
-        
-        if result.returncode != 0:
-            print(f"⚠️  Warning: Could not update dependencies: {result.stderr}")
-        else:
-            print("✅ Dependencies updated successfully")
-    
-    def update_launcher(self):
-        """Update launcher script."""
-        new_launcher_content = f"""#!/usr/bin/env bash
-# ConfWatch Launcher Script (Updated)
-CONFWATCH_HOME="{self.confwatch_home}"
-VENV_DIR="$CONFWATCH_HOME/venv"
-export PYTHONPATH="$CONFWATCH_HOME/confwatch-module:$PYTHONPATH"
-
-if [[ -f "$VENV_DIR/bin/activate" ]]; then
-    source "$VENV_DIR/bin/activate"
-    python -m confwatch.cli.main "$@"
-else
-    echo "Error: ConfWatch virtual environment not found at $VENV_DIR"
-    exit 1
-fi
-"""
-        
-        with open(self.launcher_file, 'w') as f:
-            f.write(new_launcher_content)
-        
-        os.chmod(self.launcher_file, 0o755)
-    
-    def get_new_version(self) -> str:
-        """Get version of newly installed ConfWatch."""
-        try:
-            # Temporarily add new module to path
-            sys.path.insert(0, self.confwatch_module_dir)
-            import importlib
-            import confwatch as new_confwatch
-            importlib.reload(new_confwatch)
-            return new_confwatch.__version__
-        except Exception:
-            return "unknown"
-    
-    def cleanup_backups(self, module_backup_dir: str, web_backup_dir: str):
-        """Clean up backup directories after successful update."""
-        if os.path.exists(module_backup_dir):
-            shutil.rmtree(module_backup_dir)
-        
-        if os.path.exists(web_backup_dir):
-            shutil.rmtree(web_backup_dir)
-    
     def update(self, branch: str = "main", force: bool = False) -> bool:
-        """Perform complete update process."""
+        """Perform complete update process using backup-reinstall-restore."""
         print("ConfWatch Update")
         print("=" * 30)
         
@@ -235,101 +191,77 @@ fi
         if not force:
             print("This will update ConfWatch to the latest version from GitHub.")
             print("The update process will:")
-            print("  1. Download the latest version")
-            print("  2. Stop any running daemon")
-            print("  3. Update Python modules and dependencies")
-            print("  4. Update web interface files")
-            print("  5. Update launcher script")
-            print("  6. Restart daemon if it was running")
-            print("")
+            print("  1. Backup your user data (config, snapshots, auth)")
+            print("  2. Remove current installation")
+            print("  3. Install fresh version")
+            print("  4. Restore your user data")
+            print("  5. Restart daemon if it was running")
+            print()
             print("✅ PRESERVED (will NOT be touched):")
             print("  • Your configuration files (~/.confwatch/config/)")
             print("  • All file history and snapshots (~/.confwatch/repo/)")
             print("  • Authentication settings (auth.yml)")
-            print("  • Virtual environment (only packages updated)")
-            print("")
-            response = input("Continue with update? (y/N): ")
-            if response.lower() not in ['y', 'yes']:
+            print()
+            
+            # Show snapshot count if available
+            if os.path.exists(self.repo_dir):
+                try:
+                    result = subprocess.run([
+                        "git", "-C", self.repo_dir, "log", "--oneline"
+                    ], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        snapshot_count = len(result.stdout.strip().split('\n')) if result.stdout.strip() else 0
+                        print(f"✅ Found {snapshot_count} snapshots in history (will be preserved)")
+                except:
+                    print("✅ Configuration directory found: " + self.config_dir)
+                    print("✅ Repository directory found: " + self.repo_dir)
+            
+            response = input("\nContinue with update? (y/N): ").strip().lower()
+            if response != 'y':
                 print("Update cancelled.")
                 return False
         
-        # Stop daemon if running
+        # Check daemon status
         daemon_was_running = self.check_daemon_status()
         
-        # Verify that user data directories exist and will be preserved
-        config_dir = os.path.join(self.confwatch_home, "config")
-        if os.path.exists(config_dir):
-            print(f"✅ Configuration directory found: {config_dir}")
-        
-        if os.path.exists(self.repo_dir):
-            print(f"✅ Repository directory found: {self.repo_dir}")
-            # Count git commits to show user their history is safe
+        # Create temporary backup directory
+        with tempfile.TemporaryDirectory(prefix="confwatch-backup-") as backup_dir:
             try:
-                result = subprocess.run(
-                    ["git", "rev-list", "--count", "HEAD"],
-                    cwd=self.repo_dir,
-                    capture_output=True,
-                    text=True
-                )
-                if result.returncode == 0:
-                    commit_count = result.stdout.strip()
-                    print(f"✅ Found {commit_count} snapshots in history (will be preserved)")
-            except Exception:
-                pass
-        
-        # Create temporary directory for download
-        with tempfile.TemporaryDirectory() as temp_dir:
-            try:
-                # Download and extract
-                print("📥 Downloading latest version from GitHub...")
-                if not self.download_update(temp_dir, branch):
+                # Step 1: Backup user data
+                if not self.backup_user_data(backup_dir):
+                    print("❌ Update failed: Could not backup user data")
                     return False
                 
-                print("📦 Extracting update...")
-                if not self.extract_update(temp_dir):
+                # Step 2: Run fresh installation
+                if not self.run_fresh_installation(branch):
+                    print("❌ Update failed: Fresh installation failed")
+                    print("⚠️  Your data is safe in backup, but update failed")
                     return False
                 
-                # Create backups
-                module_backup_dir, web_backup_dir = self.backup_current_installation()
+                # Step 3: Restore user data
+                if not self.restore_user_data(backup_dir):
+                    print("❌ Update failed: Could not restore user data")
+                    print("⚠️  Fresh installation completed but data restore failed")
+                    return False
                 
-                # Update components
-                print("🔄 Updating ConfWatch module...")
-                self.update_python_module(temp_dir)
-                
-                print("🌐 Updating web interface...")
-                self.update_web_interface(temp_dir)
-                
-                print("📚 Updating dependencies...")
-                self.update_dependencies(temp_dir)
-                
-                print("🔧 Updating launcher...")
-                self.update_launcher()
-                
-                # Check new version
-                new_version = self.get_new_version()
-                if new_version != "unknown":
-                    print(f"✅ Updated to version: {new_version}")
-                else:
-                    print("✅ Update completed")
-                
-                # Restart daemon if it was running
+                # Step 4: Restart daemon if it was running
                 if daemon_was_running:
-                    print("🔄 Restarting daemon...")
                     self.restart_daemon()
                 
-                # Clean up backups on success
-                self.cleanup_backups(module_backup_dir, web_backup_dir)
-                
                 print("🎉 Update completed successfully!")
-                print("You can now use the updated ConfWatch.")
                 
+                # Show new version
+                try:
+                    new_version = self.get_current_version()
+                    if new_version != "unknown":
+                        print(f"✅ Updated to version: {new_version}")
+                except:
+                    pass
+                
+                print("You can now use the updated ConfWatch.")
                 return True
                 
             except Exception as e:
-                print(f"❌ Error during update: {e}")
-                
-                # Restore backups on error
-                self.restore_backups(module_backup_dir, web_backup_dir)
-                
-                print("❌ Update failed. Previous version restored.")
+                print(f"❌ Update failed with error: {e}")
+                print("⚠️  Your data is safe in temporary backup")
                 return False 

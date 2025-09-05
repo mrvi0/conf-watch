@@ -463,7 +463,10 @@ main() {
     copy_python_module
     init_repo
     setup_web
-    generate_auth_password
+    # Only generate password if not in update mode
+    if [[ -z "$CONFWATCH_UPDATE_MODE" ]]; then
+        generate_auth_password
+    fi
     create_launcher
     add_to_path
     cleanup
