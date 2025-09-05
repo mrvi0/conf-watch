@@ -36,6 +36,8 @@ Examples:
   confwatch daemon start
   confwatch daemon stop
   confwatch daemon status
+  confwatch update
+  confwatch update --force
   confwatch reset-password
   confwatch reset-password --force
   confwatch uninstall
@@ -105,6 +107,11 @@ Examples:
     # Daemon status
     daemon_status_parser = daemon_subparsers.add_parser('status', help='Show daemon status')
     
+    # Update command
+    update_parser = subparsers.add_parser('update', help='Update ConfWatch to latest version')
+    update_parser.add_argument('--force', '-f', action='store_true', help='Force update without confirmation')
+    update_parser.add_argument('--branch', default='main', help='Branch to update from (default: main)')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -142,6 +149,8 @@ Examples:
             handle_reset_password(args, config_file)
         elif args.command == 'daemon':
             handle_daemon(args, config_file, repo_dir)
+        elif args.command == 'update':
+            handle_update(args, config_file)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -501,6 +510,16 @@ def handle_daemon(args, config_file, repo_dir):
         
         if 'watcher_error' in status:
             print(f"Watcher error: {status['watcher_error']}")
+
+def handle_update(args, config_file):
+    """Handle update command."""
+    from confwatch.core.updater import ConfWatchUpdater
+    
+    updater = ConfWatchUpdater(config_file)
+    success = updater.update(branch=args.branch, force=args.force)
+    
+    if not success:
+        sys.exit(1)
 
 if __name__ == '__main__':
     main() 
