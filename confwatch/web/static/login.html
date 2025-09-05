@@ -219,7 +219,7 @@
 ╚██████╗╚██████╔╝██║ ╚████║██║     ╚███╔███╔╝██║  ██║   ██║   ╚██████╗██║  ██║
  ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚═╝      ╚══╝╚══╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 </pre>
-                <div class="version">v2.0.1 - Configuration File Monitor</div>
+                <div class="version">v<span id="cw-version"></span> - Configuration File Monitor</div>
             </div>
             
             <div class="info">
@@ -273,6 +273,16 @@
                 errorDiv.style.display = 'block';
             }
         });
+        
+        // Load version dynamically
+        fetch('/api/version')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('cw-version').textContent = data.version;
+            })
+            .catch(error => {
+                document.getElementById('cw-version').textContent = '3.2.1';
+            });
         
         // Focus on password field when page loads
         document.getElementById('password').focus();

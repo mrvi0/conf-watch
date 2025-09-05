@@ -36,6 +36,9 @@ Examples:
   confwatch daemon start
   confwatch daemon stop
   confwatch daemon status
+  confwatch web-daemon start --port 9000
+  confwatch web-daemon stop
+  confwatch web-daemon status
   confwatch update
   confwatch update --force
   confwatch reset-password
@@ -112,6 +115,35 @@ Examples:
     update_parser.add_argument('--force', '-f', action='store_true', help='Force update without confirmation')
     update_parser.add_argument('--branch', default='main', help='Branch to update from (default: main)')
     
+    # Web daemon commands
+    web_daemon_parser = subparsers.add_parser('web-daemon', help='Manage persistent web server daemon')
+    web_daemon_subparsers = web_daemon_parser.add_subparsers(dest='web_daemon_action', help='Web daemon actions')
+    
+    # Web daemon start
+    web_daemon_start_parser = web_daemon_subparsers.add_parser('start', help='Start persistent web server daemon')
+    web_daemon_start_parser.add_argument('--host', default=None, help='Host to bind to')
+    web_daemon_start_parser.add_argument('--port', type=int, default=None, help='Port to bind to')
+    web_daemon_start_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    web_daemon_start_parser.add_argument('--foreground', '-f', action='store_true', help='Run in foreground')
+    
+    # Web daemon stop
+    web_daemon_stop_parser = web_daemon_subparsers.add_parser('stop', help='Stop persistent web server daemon')
+    
+    # Web daemon restart
+    web_daemon_restart_parser = web_daemon_subparsers.add_parser('restart', help='Restart persistent web server daemon')
+    web_daemon_restart_parser.add_argument('--host', default=None, help='Host to bind to')
+    web_daemon_restart_parser.add_argument('--port', type=int, default=None, help='Port to bind to')
+    web_daemon_restart_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    
+    # Web daemon status
+    web_daemon_status_parser = web_daemon_subparsers.add_parser('status', help='Show web daemon status')
+    
+    # Web daemon config
+    web_daemon_config_parser = web_daemon_subparsers.add_parser('config', help='Configure web daemon settings')
+    web_daemon_config_parser.add_argument('--host', default='0.0.0.0', help='Host to bind to (default: 0.0.0.0)')
+    web_daemon_config_parser.add_argument('--port', type=int, default=8080, help='Port to bind to (default: 8080)')
+    web_daemon_config_parser.add_argument('--debug', action='store_true', help='Enable debug mode')
+    
     args = parser.parse_args()
     
     if not args.command:
@@ -151,6 +183,8 @@ Examples:
             handle_daemon(args, config_file, repo_dir)
         elif args.command == 'update':
             handle_update(args, config_file)
+        elif args.command == 'web-daemon':
+            handle_web_daemon(args, config_file)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
@@ -520,6 +554,70 @@ def handle_update(args, config_file):
     
     if not success:
         sys.exit(1)
+
+def handle_web_daemon(args, config_file):
+    """Handle web daemon commands."""
+    from confwatch.core.web_daemon import WebDaemonManager
+    
+    web_daemon = WebDaemonManager(config_file)
+    
+    if not args.web_daemon_action:
+        print("Error: No web daemon action specified. Use 'start', 'stop', 'restart', 'status', or 'config'")
+        return
+    
+    if args.web_daemon_action == 'start':
+        background = not args.foreground
+        
+        if web_daemon.start(
+            background=background,
+            host=args.host,
+            port=args.port,
+            debug=args.debug
+        ):
+            if background:
+                print("✅ Web daemon started successfully in background")
+            else:
+                print("✅ Web daemon started in foreground")
+        else:
+            print("❌ Failed to start web daemon")
+            sys.exit(1)
+    
+    elif args.web_daemon_action == 'stop':
+        if web_daemon.stop():
+            print("✅ Web daemon stopped successfully")
+        else:
+            print("❌ Failed to stop web daemon")
+            sys.exit(1)
+    
+    elif args.web_daemon_action == 'restart':
+        if web_daemon.restart(host=args.host, port=args.port, debug=args.debug):
+            print("✅ Web daemon restarted successfully")
+        else:
+            print("❌ Failed to restart web daemon")
+            sys.exit(1)
+    
+    elif args.web_daemon_action == 'status':
+        status = web_daemon.status()
+        
+        print("Web Daemon Status:")
+        print("=" * 30)
+        print(f"Running: {'Yes' if status['running'] else 'No'}")
+        
+        if status['running']:
+            print(f"PID: {status['pid']}")
+            print(f"URL: http://{status['host']}:{status['port']}")
+            print(f"Debug mode: {'Yes' if status['debug'] else 'No'}")
+        
+        print(f"Configuration file: {status['config_file']}")
+        print(f"PID file: {status['pid_file']}")
+        print(f"Log file: {status['log_file']}")
+    
+    elif args.web_daemon_action == 'config':
+        web_daemon.save_config(host=args.host, port=args.port, debug=args.debug)
+        print("✅ Web daemon configuration updated")
+        print(f"Host: {args.host}")
+        print(f"Port: {args.port}")
+        print(f"Debug: {args.debug}")
 
 if __name__ == '__main__':
     main() 
